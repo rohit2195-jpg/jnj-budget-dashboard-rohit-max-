@@ -2,36 +2,25 @@
 
 import os
 import pandas as pd
-from google import genai
 from dotenv import load_dotenv
+from data_analysis.llm import llm_model
+
 
 def generate_analysis_code(user_question, data_path):
     """
-    Generates Python code to analyze the dataset based on the user's question using Gemini.
+    Generates Python code to analyze the dataset based on the user's question using a provided LLM.
     """
-    load_dotenv()
-    api_key = os.getenv("GEMINI_API_KEY")
-    MODEL_ID = os.getenv("MODEL_ID")
-
-    if not api_key:
-        return "print('Error: GEMINI_API_KEY not found. Please set it in a .env file.')"
-
-    client = genai.Client(api_key=api_key)
 
     # Ensure the data path is valid
     if not os.path.exists(data_path):
-        print(f'Error: Data file not found at {data_path}')
-        return 
+        return f"print('Error: Data file not found at {data_path}')"
 
     # Get the header of the CSV for context
     try:
         df_header = pd.read_json(data_path).columns.tolist()
         df_first_rows = pd.read_json(data_path).head(5).to_string()
-        print(df_header)
-        print(df_first_rows)
     except Exception as e:
-        print(f'Error reading data file: {e}')
-        return 
+        return f"print('Error reading data file: {e}')"
 
     prompt = f"""
     You are a data analyst. Your task is to write Python code to answer a user's question about a dataset.
@@ -51,20 +40,15 @@ def generate_analysis_code(user_question, data_path):
     """
 
     try:
-        response = client.models.generate_content(
-            model=MODEL_ID,
-            contents=prompt,
-        )
+        response = llm_model.invoke(prompt)
         
         # clean response
-        response = response.text
+        response = response.content
         response = response.strip('```').lstrip('python')
         
-        print(response)
         return response
     except Exception as e:
-        print(f'An error occurred with the LLM: {e}')
-        return 
+        return f"print('An error occurred with the LLM: {e}')" 
 
 
 def execute_analysis(code, *args, **kwargs):

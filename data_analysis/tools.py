@@ -1,4 +1,4 @@
-from adk.tools import tool
+from langchain.tools import tool
 from data_analysis.analyzer import generate_analysis_code, execute_analysis
 
 @tool

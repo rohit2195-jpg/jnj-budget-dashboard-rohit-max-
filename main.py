@@ -1,4 +1,4 @@
-from data_analysis.llm_agent import agent
+from data_analysis.llm_agent import agent_executor
 from data_analysis.summarizer import summarize_results
 
 def main():
@@ -10,7 +10,9 @@ def main():
     data_path = "data/US Spending Data/spending_data.json"
 
     # Use the imported agent to chat
-    response = agent.chat(f"Use your tools to perform data analysis and answer this question: {user_question} for the data at {data_path}")
+    response = agent_executor.invoke({
+        "input": f"Use your tools to perform data analysis and answer this question: {user_question} for the data at {data_path}. Include all of the python outputs and context"
+    })
     
     print("RAW from agent:")
     print(response)
