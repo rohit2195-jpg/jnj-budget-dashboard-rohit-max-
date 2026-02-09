@@ -56,3 +56,4 @@ sniffio
 typing_extensions
 distro
 google-genai
+google-adk
