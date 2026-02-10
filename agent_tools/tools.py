@@ -1,4 +1,4 @@
-from analyzer import generate_analysis_code, execute_analysis
+from .analyzer import generate_analysis_code, execute_analysis
 from langchain.tools import tool
 
 

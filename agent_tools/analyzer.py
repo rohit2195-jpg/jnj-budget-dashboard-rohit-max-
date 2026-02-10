@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from google import genai
 from dotenv import load_dotenv
-from llm_model import model
+from .llm_model import model
 
 def generate_analysis_code(user_question, data_path):
     """

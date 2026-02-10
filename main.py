@@ -1,42 +1,39 @@
-from multi_tool_agent.agent import root_agent
+import sys
+import os
+from agent import callAgent
 from agent_tools.summarizer import summarize_results
-import asyncio
+import os
 
-from google.adk.runners import Runner
-from google.adk.sessions import InMemorySessionService
 
-async def main():
+def main():
     """
     Main function to run the data analysis agent.
     """
-    # Example usage:
-    user_question = "What is the total spending in the dataset?"
-    data_path = "data/US Spending Data/spending_data.json"
+    # Get user input
+    user_question = input("What question do you have about the data? ")
+    user_question = "Where is the top 10 places the us is spending money?"
+    data_path = './data/US Spending Data/spending_data.json'
+    metadata_path = './data/US Spending Data/metadata.txt'
 
-    runner = Runner()
-    session_service = InMemorySessionService()
-    
-    session = await session_service.create_session(agent=root_agent)
+    # Check if the data path is valid
+    if not os.path.exists(data_path):
+        print(f"Error: The file '{data_path}' was not found.")
+        return
 
-
-    # Use the imported agent to chat
-    prompt = f"""
-        Use your tools to perform data analysis and answer this question:
-        {user_question}
-        The data is located at:
-        {data_path}
-        Include all python outputs and context.
-        """
-    
-
-    response = await runner.run(session_id=session.id, prompt=prompt, session_service=session_service)
 
     
-    print("RAW from agent:")
-    print(f"[my_first_agent]: {response.output.text}")
+    analysis_output = callAgent(user_question, data_path)
 
 
-    response =  summarize_results(user_question, response) 
+    print(analysis_output)
+        
+    # 3. Summarize the results
+    summary = summarize_results(user_question, analysis_output)
+    
+    # Present the final output
+    print("\n--- Analysis Summary ---")
+    print(summary)
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
