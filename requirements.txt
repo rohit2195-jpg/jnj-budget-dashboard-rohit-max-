@@ -8,8 +8,8 @@ numpy
 pandas
 matplotlib
 
-# LangChain + Google GenAI
-langchain>=1.0,<2.0
-langchain-google-genai>=1.0,<2.0
-google-genai>=0.3
+
+langchain-google-genai
+langchain
+
 

@@ -2,8 +2,8 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from data_analysis.analyzer import generate_analysis_code, execute_analysis
-from data_analysis.summarizer import summarize_results
+from agent_tools.analyzer import generate_analysis_code, execute_analysis
+from agent_tools.summarizer import summarize_results
 import os
 
 def main():
@@ -12,8 +12,8 @@ def main():
     """
     # Get user input
     user_question = input("What question do you have about the data? ")
-    data_path = '/anvil/projects/x-cis220051/corporate/jj-budget/project/rsattuluri/jnj-budget-dashboard-rohit-max-/data/US Spending Data/spending_data.json'
-    metadata_path = '/anvil/projects/x-cis220051/corporate/jj-budget/project/rsattuluri/jnj-budget-dashboard-rohit-max-/data/US Spending Data/metadata.txt'
+    data_path = './data/US Spending Data/spending_data.json'
+    metadata_path = './data/US Spending Data/metadata.txt'
 
     # Check if the data path is valid
     if not os.path.exists(data_path):
