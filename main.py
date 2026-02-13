@@ -1,7 +1,7 @@
 import sys
 import os
 from agent import callAgent
-from agent_tools.summarizer import summarize_results
+from summarizerAgent.summarizer_agent import summarize_results
 import os
 
 

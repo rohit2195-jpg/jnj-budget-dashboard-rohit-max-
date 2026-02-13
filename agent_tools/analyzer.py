@@ -54,7 +54,8 @@ def generate_analysis_code(user_question, data_path):
         # clean response
         response = response.text
         response = response.strip('```').lstrip('python')
-        
+        print('------Code generated------')
+        print(response)
         return response
     except Exception as e:
         print(f'An error occurred with the LLM: {e}')
@@ -97,5 +98,7 @@ def execute_analysis(code, *args, **kwargs):
         sys.stdout = old_stdout
 
     ans = captured_output.getvalue()
+    print('------Code ouptut------')
+    print(ans)
 
     return ans 
