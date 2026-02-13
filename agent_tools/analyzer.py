@@ -27,8 +27,6 @@ def generate_analysis_code(user_question, data_path):
     try:
         df_header = pd.read_json(data_path).columns.tolist()
         df_first_rows = pd.read_json(data_path).head(5).to_string()
-        print(df_header)
-        print(df_first_rows)
     except Exception as e:
         print(f'Error reading data file: {e}')
         return 
@@ -57,7 +55,6 @@ def generate_analysis_code(user_question, data_path):
         response = response.text
         response = response.strip('```').lstrip('python')
         
-        print(response)
         return response
     except Exception as e:
         print(f'An error occurred with the LLM: {e}')
@@ -100,6 +97,5 @@ def execute_analysis(code, *args, **kwargs):
         sys.stdout = old_stdout
 
     ans = captured_output.getvalue()
-    print(ans)
 
     return ans 

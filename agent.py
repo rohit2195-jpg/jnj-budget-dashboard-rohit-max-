@@ -31,8 +31,6 @@ def get_final_answer(result):
 
 def callAgent(question, data_path):
 
-
-
     analysis_output = agent.invoke(
         {"messages": [{"role": "user", 
                        "content": f"""You are a data anlayst, use your tools availble to best answer the user question by doing data anlysis on the data
@@ -42,8 +40,5 @@ def callAgent(question, data_path):
         """
         }]}
     )
-
-
-
 
     return analysis_output
