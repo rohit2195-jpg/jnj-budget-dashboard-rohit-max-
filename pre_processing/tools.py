@@ -3,14 +3,17 @@ import os
 import pandas as pd
 from google import genai
 from dotenv import load_dotenv
-from .llm_model import model
+from agent_tools.llm_model import model
+from langchain.tools import tool
 import json
 
 
-def generate_analysis_code(user_question, data_path):
+@tool
+def generate_analysis_code(data_path:str) -> str:
     """
-    Generates Python code to analyze the dataset based on the user's question using Gemini.
+    Generates Python code to pre-process the dataset. Will print saved location of processed dataset.
     """
+    print("Pre-processing generating cleaning code")
     load_dotenv()
     api_key = os.getenv("GEMINI_API_KEY")
     MODEL_ID = os.getenv("MODEL_ID")
@@ -27,25 +30,31 @@ def generate_analysis_code(user_question, data_path):
 
     # Get the header of the CSV for context
     try:
+        df = pd.read_json(data_path)
         df_header = pd.read_json(data_path).columns.tolist()
         df_first_rows = pd.read_json(data_path).head(5).to_string()
+        info = df
     except Exception as e:
         print(f'Error reading data file: {e}')
         return 
 
     prompt = f"""
-    You are a data analyst. Your task is to write Python code to answer a user's question about a dataset.
+    You are a data pre-processor
     The dataset is located at: {data_path}
     The data is in JSON format and its columns are: {df_header}
     First five rows in the data: {df_first_rows}
 
-    User's question: "{user_question}"
+    Please pre-process the data by cleaning, transforming, and organizing raw data into a usable format for future analysis and machine learning
+    Hardcode the data path in your code.
 
     Based on the user's question, please generate a Python script that uses the pandas library to perform the analysis.
     The script should:
     1. Load the JSON data from the specified path.
-    2. Perform the analysis required to answer the user's question.
-    3. Print the results of the analysis to the console.
+    2. Write code to pre-process, and clean the data
+    3. Get some understanding of the dataset
+    4. Save cleaned dataset to 'pre_processing/processed_data/[file_name_here]' as a json file
+    5. Print path of the cleaned dataset ex. (pre_processing/processed_data/[file_name_here])
+
 
     Your code should be executable and self-contained. Do not include any markdown formatting.
     """
@@ -64,6 +73,10 @@ def generate_analysis_code(user_question, data_path):
         return 
 
 def execute_analysis(code, *args, target_function=None, **kwargs):
+    """
+    Executes Python code and returns the output. Used for simple data analysis.
+    The generated code must define a function named 'analyze_spending_data'
+    """
     from io import StringIO
     import sys
     import inspect
@@ -125,3 +138,17 @@ def execute_analysis(code, *args, target_function=None, **kwargs):
     print(ans)
 
     return ans
+@tool
+def execute_analysis_tool(code: str, filepath: str) -> str:
+    """
+    Executes Python code and returns the output. Used for simple data analysis.
+    The generated code must define a function named 'analyze_spending_data'
+    that accepts a single argument: file_path.
+    """
+    print("Agent is executing analysis code")
+
+    return execute_analysis(
+        code,
+        filepath,
+        target_function="analyze_spending_data"
+    )

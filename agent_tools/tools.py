@@ -1,16 +1,9 @@
 from .analyzer import generate_analysis_code, execute_analysis
 from langchain.tools import tool
+import json
+import os
 
 
-@tool
-def search(query: str) -> str:
-    """Search for information."""
-    return f"Results for: {query}"
-
-@tool
-def get_weather(location: str) -> str:
-    """Get weather information for a location."""
-    return f"Weather in {location}: Sunny, 72°F"
 
 @tool
 def generate_analysis_code_tool(user_question: str, data_path: str) -> str:
@@ -21,9 +14,23 @@ def generate_analysis_code_tool(user_question: str, data_path: str) -> str:
     return generate_analysis_code(user_question, data_path)
 
 @tool
-def execute_analysis_tool(code: str) -> str:
+def execute_analysis_tool(code: str, filepath: str) -> str:
     """
-    Executes Python code and returns the output.
+    Executes Python code and returns the output. Used for simple data analysis.
+    The generated code must define a function named 'analyze_spending_data'
+    that accepts a single argument: file_path.
     """
     print("Agent is executing analysis code")
-    return execute_analysis(code)
+
+    return execute_analysis(
+        code,
+        filepath,
+        target_function="analyze_spending_data"
+    )
+
+
+
+
+
+
+
