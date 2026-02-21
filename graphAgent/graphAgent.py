@@ -70,5 +70,6 @@ def create_graph(user_question, analysis_output):
     content = last_message.content
     if isinstance(content, str):
         content = content.replace("json", "").replace("", "").strip()
+    content = content.strip('```').strip('\n')
     return content
 
