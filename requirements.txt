@@ -12,4 +12,7 @@ matplotlib
 langchain-google-genai
 langchain
 
+#backend
+flask
+flask-cors
 

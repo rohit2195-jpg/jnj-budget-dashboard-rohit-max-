@@ -4,6 +4,7 @@ from agent_tools.agent import callAgent
 from summarizerAgent.summarizer_agent import summarize_results
 from pre_processing.processing_agent import callPreProcessAgent
 import os
+from graphAgent.graphAgent import create_graph
 
 
 def main():
@@ -34,6 +35,9 @@ def main():
     print(analysis_output)
         
     # 3. Summarize the results
+
+    graph_json = create_graph(user_question=user_question, analysis_output=analysis_output)
+    print(graph_json)
     
     summary = summarize_results(user_question, analysis_output, ouptut_file_path)
     
