@@ -41,11 +41,11 @@ def analyze_data():
 
         # 2. Pre-processing
         pre_process_output = callPreProcessAgent(data_path)
-        print("Pre-processing complete.")
+        print("Pre-processing complete.", pre_process_output)
         
         # 3. Data Analysis
         analysis_output = callAgent(user_question, pre_process_output)
-        print("Analysis complete.")
+        print("Analysis complete.", analysis_output)
         
         # 4. Generate Graph Configurations
         graph_json_string = create_graph(user_question=user_question, analysis_output=analysis_output)
@@ -54,6 +54,7 @@ def analyze_data():
         try:
             # Parse the string returned by the LLM into actual JSON
             graph_data = json.loads(graph_json_string)
+            print(graph_data)
         except json.JSONDecodeError:
             print("Failed to parse AI graph output as JSON. Output was:", graph_json_string)
             # Fallback so frontend doesn't crash
@@ -61,12 +62,12 @@ def analyze_data():
 
         # 5. Summarize Results (Markdown)
         summary = summarize_results(user_question, analysis_output, output_file_path)
-        print("Summary complete.")
+        print("Summary complete.", summary)
         
         # 6. Return payload
         return jsonify({
             "success": True,
-            "summary": summary,
+            "summary": str(summary),
             "graphs": graph_data
         }), 200
 

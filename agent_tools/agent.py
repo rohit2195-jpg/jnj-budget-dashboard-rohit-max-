@@ -24,7 +24,8 @@ def callAgent(question, pre_process_output):
             Hardcode the data path in your analysis , so that I can execute the program inside the agent_tools folder.
 
             The generated code must define a function named 'analyze_spending_data'. This will be the top level or overall function.
-
+            The outputs of your analysis in python pandas will be sent to a graph agent, which will be responsible for turning your output into graphs
+            Your job is to only perform analysis on the data based on the user request.
 
            """
         }]}

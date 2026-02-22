@@ -114,22 +114,54 @@ function App() {
                 <h2>Visual Insights</h2>
               </div>
               <div className="charts-grid">
-                {data.graphs.charts && data.graphs.charts.length > 0 ? (
-                  data.graphs.charts.map((chart, index) => (
-                    <div key={chart.id || index} className="chart-card">
-                      <h3>{chart.title || chart.options?.title?.text || `Chart ${index + 1}`}</h3>
-                      <Chart
-                        options={chart.options || {}}
-                        series={chart.series || []}
-                        type={chart.type || 'bar'}
-                        width="100%"
-                        height="350"
-                      />
-                    </div>
-                  ))
-                ) : (
-                  <p className="no-charts">No visual data generated for this query.</p>
-                )}
+{data.graphs.charts && data.graphs.charts.length > 0 ? (
+  data.graphs.charts.map((chart, index) => {
+    
+    // 🔥 Strip formatter strings (quick fix)
+    const safeOptions = JSON.parse(JSON.stringify(chart.options || {}));
+
+    if (safeOptions?.xaxis?.labels?.formatter) {
+      delete safeOptions.xaxis.labels.formatter;
+    }
+
+    if (safeOptions?.tooltip?.y?.formatter) {
+      delete safeOptions.tooltip.y.formatter;
+    }
+
+    return (
+      <div key={chart.id || index} className="chart-card">
+        <h3>
+          {chart.title || chart.options?.title?.text || `Chart ${index + 1}`}
+        </h3>
+        <Chart
+          options={{
+            ...(chart.options || {}),
+            xaxis: {
+              ...(chart.options?.xaxis || {}),
+              labels: {
+                ...(chart.options?.xaxis?.labels || {}),
+                formatter: undefined
+              }
+            },
+            tooltip: {
+              ...(chart.options?.tooltip || {}),
+              y: {
+                ...(chart.options?.tooltip?.y || {}),
+                formatter: undefined
+              }
+            }
+          }}
+          series={chart.series || []}
+          type={chart.type || 'bar'}
+          width="100%"
+          height="350"
+        />
+      </div>
+    );
+  })
+) : (
+  <p className="no-charts">No visual data generated for this query.</p>
+)}
               </div>
             </section>
           </div>
