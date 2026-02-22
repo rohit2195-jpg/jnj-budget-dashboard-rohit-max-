@@ -122,8 +122,8 @@
 
 .dashboard-grid {
   display: grid;
-  grid-template-columns: 1fr 1.5fr;
-  gap: 2rem;
+  grid-template-columns: 700px 1fr; /* 👈 Fixed report width */
+  gap: 2.5rem;
   align-items: start;
 }
 

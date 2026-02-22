@@ -23,9 +23,12 @@ def callPreProcessAgent(data_path):
             Give the analyst (who will analyse the dataset) an overview of the data, and where the cleaned dataset is located in your output.
             IMPORTANT: Make sure to output the path to the cleaned dataset in your final answer. ex. (pre_processing/processed_data/[file_name_here])
             Do not include cleaning code.
+            The generated code must define a function named 'process_data'. This will be the top level or overall function.
+
 
             IMPORTANT: After generating code, use the execute_analysis_tool to actually enact your code and clean the dataset please.
-            
+            Final step: IMPORTANT: After generating code, use the execute_analysis_tool to actually enact your code and clean the dataset without errors.
+
             
                             """
         }]}

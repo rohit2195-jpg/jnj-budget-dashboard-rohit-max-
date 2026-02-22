@@ -61,5 +61,5 @@ def summarize_results(user_question, analysis_output, outputFilePath):
 
     last_message = analysis_output["messages"][-1]
     content = last_message.content
-
+    #final_output = content[0]["text"]
     return content

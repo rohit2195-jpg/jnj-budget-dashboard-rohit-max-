@@ -47,6 +47,16 @@ def generate_analysis_code(user_question, data_path):
     2. Perform the analysis required to answer the user's question.
     3. Print the results of the analysis to the console.
 
+    Generate ONLY this function:
+
+    def analyze_spending_data(file_path):
+
+    The function must:
+    - Load JSON from file_path
+    - Perform analysis
+    - Print insights
+    
+
     Your code should be executable and self-contained. Do not include any markdown formatting.
     """
 
@@ -71,7 +81,7 @@ def execute_analysis(code, *args, target_function=None, **kwargs):
     old_stdout = sys.stdout
     sys.stdout = captured_output = StringIO()
 
-    exec_globals = {"__name__": "__main__"}
+    exec_globals = {}
 
     try:
         # Execute generated code

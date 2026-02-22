@@ -143,7 +143,7 @@ def execute_analysis(code, *args, target_function=None, **kwargs):
 def execute_analysis_tool(code: str, filepath: str) -> str:
     """
     Executes Python code and returns the output. Used for simple data analysis.
-    The generated code must define a function named 'analyze_spending_data'
+    The generated code must define a function named 'process_data'
     that accepts a single argument: file_path.
     """
     print("Agent is executing analysis code")
@@ -151,5 +151,5 @@ def execute_analysis_tool(code: str, filepath: str) -> str:
     return execute_analysis(
         code,
         filepath,
-        target_function="analyze_spending_data"
+        target_function="process_data"
     )

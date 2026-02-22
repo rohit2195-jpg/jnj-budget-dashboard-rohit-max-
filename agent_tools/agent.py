@@ -16,8 +16,13 @@ agent = create_agent(model, tools=[generate_analysis_code_tool, execute_analysis
 def callAgent(question, pre_process_output):
 
     analysis_output = agent.invoke(
-        {"messages": [{"role": "user", 
-                       "content": f"""You are a data anlayst, use your tools availble to best answer the user question by doing data anlysis on the data
+        {
+            "messages": [
+                {
+                    "role": "system",
+                    "content": """
+
+            You are a data anlayst, use your tools availble to best answer the user question by doing data anlysis on the data
             User question: {question}
             Pre_processing_output: {pre_process_output}
             The data path will be found in the pre_processing_output
@@ -25,17 +30,29 @@ def callAgent(question, pre_process_output):
 
             The generated code must define a function named 'analyze_spending_data'. This will be the top level or overall function.
             The outputs of your analysis in python pandas will be sent to a graph agent, which will be responsible for turning your output into graphs
-            Your job is to only perform analysis on the data based on the user request.
+            Your job is to only perform analysis on the data based on the user request, write pandas data anlysis code, then execute it.
+            We don't need any extra analysis from you, other than the output of your python pandas code.
+        """
+                },
+                {
+                    "role": "user",
+                    "content": f"""
+        User question: {question}
 
-           """
-        }]}
-    )
+        Pre_processing_output:
+        {pre_process_output}
+
+        The data path is inside the pre_processing_output.
+        """
+                }
+            ]
+        }
+        )
 
     last_message = analysis_output["messages"][-1]
     content = last_message.content
 
     print("TYPE:", type(content))  # should say list
 
-    final_output = content[0]["text"]
 
-    return final_output
+    return content
