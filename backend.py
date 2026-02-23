@@ -27,7 +27,7 @@ def analyze_data():
         user_question = data.get('question')
         
         # You can either pass this from frontend or hardcode it if it's always the same
-        data_path = data.get('filepath', 'data/f1/F1 2026 Bahrain Testing Day 3.csv')
+        data_path = data.get('filepath', 'data/US Spending Data/spending_data.json')
         # metadata_path = './data/US Spending Data/metadata.txt'
         output_file_path = ''
 
