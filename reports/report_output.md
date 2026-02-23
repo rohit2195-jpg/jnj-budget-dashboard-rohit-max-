@@ -1,60 +1,101 @@
-# Analysis of Spending Data
+# F1 2026 Bahrain Testing Day 3: Performance Analysis
 
 ## Executive Summary
 
-This report provides an analysis of the provided spending dataset, revealing key patterns in fund distribution, recipient concentration, and temporal trends. The analysis indicates that spending is heavily concentrated among a few key recipients, with **Exxon Mobil Corporation** being the largest beneficiary, receiving over $724 million.
+This report analyzes the performance data from the third day of F1 2026 pre-season testing in Bahrain. The key takeaways indicate a strong showing from **Mercedes**, who demonstrated superiority in both single-lap pace and long-run consistency. Rookie **Andrea Kimi Antonelli** was the standout performer of the day, securing the fastest lap time while also being the most consistent driver. On the reliability front, **McLaren** led the field, completing the highest number of laps. The data also suggests a potentially tight midfield battle, while some top teams like Red Bull Racing appear to have focused on programs other than outright pace.
 
-The data shows significant volatility in spending year-over-year, with notable peaks in **2008 and 2024**, each exceeding $1 billion. A critical finding is the highly skewed nature of spending amounts; while the median transaction is a modest $36,950, the average is inflated to over $738,000 by a small number of extremely large, multi-million dollar contracts. This suggests that the majority of spending is driven by a few high-value projects. The average duration for these spending activities is approximately 250 days.
+---
 
 ## Detailed Findings
 
-### Insight 1: Top 5 Recipients by Total Spending
+The analysis of the dataset reveals seven key insights into team and driver performance.
 
-A small number of corporations account for a significant portion of the total funds. The top five recipients have received a combined total of over $2 billion, highlighting a heavy concentration of spending.
+### 1. Fastest Lap of the Day
 
-*   **EXXON MOBIL CORPORATION:** $724.2 million
-*   **ELECTRIC BOAT CORPORATION:** $609.1 million
-*   **IT CONCEPTS, INC.:** $237.1 million
-*   **RAYTHEON COMPANY:** $208.1 million
-*   **TRANSOCEANIC CABLE SHIP COMPANY LLC:** $204.5 million
+The ultimate pace was set by Mercedes' **Andrea Kimi Antonelli**, who recorded the fastest single lap time of the session.
 
-### Insight 2: Total Spending by Year
+*   **Fastest Driver:** Andrea Kimi Antonelli
+*   **Lap Time:** 93.669 seconds
 
-Total spending shows considerable fluctuation annually, rather than a steady trend. Two years stand out as significant outliers with exceptionally high spending:
+### 2. Team Performance Based on Average Lap Time
 
-*   **2008:** $1.06 billion
-*   **2024:** $1.12 billion
+Average lap time provides a strong indication of a team's overall race pace and consistency. **Mercedes** emerged as the quickest team on average, suggesting a well-balanced and competitive package.
 
-These peaks may correspond to the initiation of large-scale projects, significant one-time purchases, or other major economic events. The period between 2008 and 2014 generally saw a mix of high and moderate spending, followed by another period of increased spending from 2018 onwards.
+| Team | Average Lap Time (seconds) |
+| :--- | :--- |
+| Mercedes | 138.21 |
+| Haas | 161.41 |
+| McLaren | 170.69 |
+| Ferrari | 172.49 |
+| Racing Bulls | 183.14 |
+| Williams | 183.24 |
+| Alpine | 194.50 |
+| Cadillac | 206.68 |
+| Audi | 220.42 |
+| Red Bull Racing | 221.01 |
+| Aston Martin | 279.74 |
 
-### Insight 3: Distribution of Spending Amounts
+### 3. Most Consistent Driver
 
-The statistical summary reveals a heavily right-skewed distribution, meaning most transactions are small, but a few are exceptionally large.
+Consistency is as crucial as raw speed. **Andrea Kimi Antonelli** also excelled in this metric, recording the lowest standard deviation among all drivers, indicating his ability to consistently reproduce lap times.
 
-*   **Mean Spending:** $738,601
-*   **Median Spending (50th percentile):** $36,950
-*   **Maximum Spending:** $718,382,200
+*   **Most Consistent Driver:** Andrea Kimi Antonelli
+*   **Standard Deviation:** 149.95
 
-The vast difference between the mean and the median confirms that the average is heavily influenced by a few very high-value contracts. Over 75% of all transactions are below $112,000, yet the maximum single transaction is over $718 million.
+### 4. Reliability and Mileage
 
-### Insight 4: Top 5 Recipients by Average Spending Per Transaction
+Pre-season testing is a critical test of a car's reliability. **Oscar Piastri** and the **McLaren** team demonstrated exceptional endurance by completing the most laps of any team or driver.
 
-Analyzing the average amount per transaction for each recipient provides insight into the nature of their contracts. This list is dominated by companies involved in large-scale manufacturing and infrastructure.
+*   **Driver/Team with Most Laps:** Oscar Piastri / McLaren
+*   **Total Laps:** 142
 
-*   **ELECTRIC BOAT CORPORATION:** $304.6 million
-*   **EXXON MOBIL CORPORATION:** $241.4 million
-*   **IT CONCEPTS, INC.:** $237.1 million
-*   **TRANSOCEANIC CABLE SHIP COMPANY LLC:** $204.5 million
-*   **BAE SYSTEMS NORFOLK SHIP REPAIR INC.:** $137.4 million
+### 5. Best Lap Time by Team
 
-Notably, **Electric Boat Corporation** leads this list, suggesting their engagements consist of very large, high-cost projects (e.g., shipbuilding), even if they have fewer transactions than Exxon Mobil overall.
+This metric highlights each team's potential qualifying pace. Mercedes once again topped the charts, followed closely by Ferrari and McLaren.
 
-### Insight 5: Average Duration of Spending
+| Team | Best Lap Time (seconds) |
+| :--- | :--- |
+| Mercedes | 93.669 |
+| Ferrari | 94.209 |
+| McLaren | 94.549 |
+| Red Bull Racing | 95.425 |
+| Haas | 95.753 |
+| Alpine | 95.806 |
+| Audi | 96.291 |
+| Williams | 96.793 |
+| Racing Bulls | 96.808 |
+| Aston Martin | 98.165 |
+| Cadillac | 98.772 |
 
-The average duration for a spending period across all transactions is **250.26 days**. This suggests that the typical project or contract length is approximately 8 to 9 months.
+### 6. Teammate Comparison at Mercedes
 
-## Additional Insights and Observations
+An internal look at the Mercedes drivers reveals a fascinating dynamic. While Antonelli secured the faster lap, George Russell contributed more mileage, suggesting the team was focused on a split program to gather diverse data.
 
-*   **Concentration of High-Value Contracts:** The data clearly shows that while there are thousands of transactions, the financial landscape is defined by a select group of recipients securing massive contracts. Exxon Mobil and Electric Boat Corporation are pivotal players, excelling in both total and average transaction value.
-*   **Project-Based Spending Cycles:** The erratic year-over-year spending, especially the peaks in 2008 and 2024, points towards a project-based spending model rather than consistent operational expenditure. Investigating the specific contracts in these years could reveal the primary drivers of these spikes.
-*   **Diverse Recipient Portfolio:** While the top is dominated by industrial and defense-related corporations, the low median transaction value suggests a diverse ecosystem of smaller suppliers and contractors who receive the majority of the individual, smaller-value contracts.
+| Driver | Best Lap | Average Lap | Lap Count |
+| :--- | :--- | :--- | :--- |
+| Andrea Kimi Antonelli | 93.669 | 133.52 | 45 |
+| George Russell | 93.918 | 141.67 | 61 |
+
+### 7. Lap Time Distribution for High-Mileage Drivers
+
+Analyzing drivers who completed the most laps shows a wide distribution in their lap times. The large difference between minimum and maximum times indicates varied run plans, including installation laps, high-fuel running, and full-pace simulations.
+
+| Driver | Mean Lap Time | Standard Deviation | Min Lap Time | Max Lap Time |
+| :--- | :--- | :--- | :--- | :--- |
+| Alexander Albon | 146.34 | 204.78 | 96.79 | 1557.06 |
+| Franco Colapinto | 194.50 | 290.16 | 95.81 | 1911.44 |
+| Lewis Hamilton | 172.49 | 244.50 | 94.21 | 1935.63 |
+| Liam Lawson | 183.14 | 275.22 | 96.81 | 1589.10 |
+| Oscar Piastri | 170.69 | 239.71 | 94.55 | 1620.02 |
+
+---
+
+## Notable Trends and Additional Insights
+
+*   **Mercedes' Dual Threat:** The data strongly suggests Mercedes has a formidable package. They are not only the fastest in single-lap qualifying simulations but also hold the best average pace, marking them as the early benchmark.
+
+*   **Anomalous Pace of Top Teams:** The average lap time data for **Red Bull Racing** and **Aston Martin** is notably high (slow). This is a strong indicator that these teams were not pursuing performance runs and were likely focused on other testing parameters such as aerodynamic correlation, high-fuel running, or systems checks. Their true pace remains hidden.
+
+*   **Antonelli's Stellar Performance:** It is highly significant for a driver to be both the fastest and the most consistent on a given day. This dual achievement by Andrea Kimi Antonelli is a standout performance that marks him as a driver with exceptional potential.
+
+*   **The Importance of Context:** The large standard deviations and the vast range between minimum and maximum lap times for high-mileage drivers underscore that testing data is not always representative of pure pace. Lap times are heavily influenced by fuel loads, tire compounds, and specific testing programs. Therefore, headline lap times should be interpreted with caution.

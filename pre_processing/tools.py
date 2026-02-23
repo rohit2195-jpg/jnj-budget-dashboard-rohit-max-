@@ -146,7 +146,7 @@ def execute_analysis_tool(code: str, filepath: str) -> str:
     The generated code must define a function named 'process_data'
     that accepts a single argument: file_path.
     """
-    print("Agent is executing analysis code")
+    print("Pre-processor is executing analysis code")
 
     return execute_analysis(
         code,

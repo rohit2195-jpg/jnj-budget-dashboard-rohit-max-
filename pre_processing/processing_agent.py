@@ -35,5 +35,14 @@ def callPreProcessAgent(data_path):
     )
     last_message = analysis_output["messages"][-1]
     content = last_message.content
-    final_output = content[0]["text"]
+
+    if isinstance(content, list):
+        # Gemini block format
+        final_output = content[0].get("text", "")
+    elif isinstance(content, str):
+        # Plain string format
+        final_output = content
+    else:
+        final_output = str(content)
+
     return final_output

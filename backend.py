@@ -27,7 +27,8 @@ def analyze_data():
         user_question = data.get('question')
         
         # You can either pass this from frontend or hardcode it if it's always the same
-        data_path = data.get('filepath', 'data/US Spending Data/spending_data.json')
+        # data/US Spending Data/spending_data.json
+        data_path = data.get('filepath', 'data/f1/F1 2026 Bahrain Testing Day 3.csv')
         # metadata_path = './data/US Spending Data/metadata.txt'
         output_file_path = ''
 
@@ -48,17 +49,9 @@ def analyze_data():
         print("Analysis complete.", analysis_output)
         
         # 4. Generate Graph Configurations
-        graph_json_string = create_graph(user_question=user_question, analysis_output=analysis_output)
-        print("Graph generation complete.")
-        
-        try:
-            # Parse the string returned by the LLM into actual JSON
-            graph_data = json.loads(graph_json_string)
-            print(graph_data)
-        except json.JSONDecodeError:
-            print("Failed to parse AI graph output as JSON. Output was:", graph_json_string)
-            # Fallback so frontend doesn't crash
-            graph_data = {"charts": []}
+        graph_data = create_graph(user_question, analysis_output)
+        print("Graph generation complete.")           
+        print(graph_data)
 
         # 5. Summarize Results (Markdown)
         summary = summarize_results(user_question, analysis_output, output_file_path)
