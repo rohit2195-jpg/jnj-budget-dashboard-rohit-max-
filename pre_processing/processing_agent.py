@@ -1,10 +1,13 @@
 from langchain.agents import create_agent
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.tools import tool
+from pathlib import Path
+from datetime import datetime
+import json
 import os
+import pandas as pd
 from dotenv import load_dotenv
 from agent_tools.llm_model import model
-from pre_processing.tools import generate_analysis_code, execute_analysis_tool
+from pre_processing.tools import generate_analysis_code, execute_analysis_tool, _compute_output_path
 
 load_dotenv()
 
@@ -13,36 +16,62 @@ pre_process_agent = create_agent(model, tools=[generate_analysis_code, execute_a
 
 
 def callPreProcessAgent(data_path):
+    # Compute output path deterministically in Python — no LLM involvement
+    output_path = _compute_output_path(data_path)
+    manifest_path = "pre_processing/processed_data/manifest.json"
 
     analysis_output = pre_process_agent.invoke(
-        {"messages": [{"role": "user", 
-                       "content": f"""Please pre-process the data by cleaning, transforming, and organizing raw data into a usable format for future analysis and machine learning
+        {"messages": [{"role": "user",
+                       "content": f"""Please pre-process the data by cleaning, transforming, and organizing raw data into a usable format for future analysis.
             Data path: {data_path}
-            Hardcode the data path in your code.
-            Output clean dataset inside './pre_processing/processed_data'
-            Give the analyst (who will analyse the dataset) an overview of the data, and where the cleaned dataset is located in your output.
-            IMPORTANT: Make sure to output the path to the cleaned dataset in your final answer. ex. (pre_processing/processed_data/[file_name_here])
-            Do not include cleaning code.
-            The generated code must define a function named 'process_data'. This will be the top level or overall function.
+            IMPORTANT: The cleaned dataset MUST be saved to EXACTLY this path: {output_path}
+            Do not choose a different filename. Use exactly: {output_path}
 
+            Steps:
+            1. Use the generate_analysis_code tool with the data path to generate preprocessing code.
+            2. Use the execute_analysis_tool to run the code and save the cleaned dataset.
+            3. In your final answer, provide a brief overview of the dataset (columns, shape, notable characteristics).
+               Do not repeat the code. Do not mention the file path — that is handled separately.
 
-            IMPORTANT: After generating code, use the execute_analysis_tool to actually enact your code and clean the dataset please.
-            Final step: IMPORTANT: After generating code, use the execute_analysis_tool to actually enact your code and clean the dataset without errors.
-
-            
-                            """
-        }]}
+            The generated code must define a function named 'process_data'. This will be the top level function.
+            """
+                       }]}
     )
+
     last_message = analysis_output["messages"][-1]
     content = last_message.content
-
     if isinstance(content, list):
-        # Gemini block format
-        final_output = content[0].get("text", "")
+        summary = content[0].get("text", "")
     elif isinstance(content, str):
-        # Plain string format
-        final_output = content
+        summary = content
     else:
-        final_output = str(content)
+        summary = str(content)
 
-    return final_output
+    # Build the manifest in Python — reliable, no LLM text parsing
+    if not os.path.exists(output_path):
+        return {
+            "data_path": output_path,
+            "source_file": data_path,
+            "status": "error",
+            "summary": summary,
+            "error": f"Preprocessing did not produce expected output file at: {output_path}"
+        }
+
+    df = pd.read_json(output_path)
+    manifest = {
+        "data_path": output_path,
+        "source_file": data_path,
+        "columns": df.columns.tolist(),
+        "dtypes": df.dtypes.astype(str).to_dict(),
+        "row_count": len(df),
+        "summary": summary,
+        "created_at": datetime.utcnow().isoformat(),
+        "status": "success"
+    }
+
+    os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
+    with open(manifest_path, "w") as f:
+        json.dump(manifest, f, indent=2)
+
+    print(f"Manifest written to {manifest_path}")
+    return manifest

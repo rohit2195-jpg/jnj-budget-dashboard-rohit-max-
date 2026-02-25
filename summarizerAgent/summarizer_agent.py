@@ -15,7 +15,7 @@ agent = create_agent(model, tools=[save_analysis_to_txt])
 
 def summarize_results(user_question, analysis_output, outputFilePath):
 
-    analysis_output = agent.invoke(
+    invoke_result = agent.invoke(
         {
             "messages": [
                 {
@@ -59,7 +59,8 @@ def summarize_results(user_question, analysis_output, outputFilePath):
         }
     )
 
-    last_message = analysis_output["messages"][-1]
+    last_message = invoke_result["messages"][-1]
     content = last_message.content
-    #final_output = content[0]["text"]
+    if isinstance(content, list):
+        return content[0].get("text", "")
     return content

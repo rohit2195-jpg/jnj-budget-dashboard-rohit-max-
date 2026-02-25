@@ -7,6 +7,7 @@ from flask_cors import CORS
 from agent_tools.agent import callAgent
 from summarizerAgent.summarizer_agent import summarize_results
 from pre_processing.processing_agent import callPreProcessAgent
+from plannerAgent.planner_agent import create_analysis_plan
 from graphAgent.graphAgent import create_graph
 
 app = Flask(__name__)
@@ -41,23 +42,30 @@ def analyze_data():
         print(f"Starting analysis for question: {user_question}")
 
         # 2. Pre-processing
-        pre_process_output = callPreProcessAgent(data_path)
-        print("Pre-processing complete.", pre_process_output)
-        
-        # 3. Data Analysis
-        analysis_output = callAgent(user_question, pre_process_output)
+        manifest = callPreProcessAgent(data_path)
+        print("Pre-processing complete. Data path:", manifest.get("data_path"))
+
+        if manifest.get("status") == "error":
+            return jsonify({"error": f"Preprocessing failed: {manifest.get('error')}"}), 500
+
+        # 3. Build analysis checklist from schema + question
+        plan = create_analysis_plan(user_question, manifest)
+        print("Analysis plan created:", [s["output_label"] for s in plan["analyses"]])
+
+        # 4. Data Analysis
+        analysis_output = callAgent(user_question, manifest, plan)
         print("Analysis complete.", analysis_output)
-        
-        # 4. Generate Graph Configurations
+
+        # 5. Generate Graph Configurations
         graph_data = create_graph(user_question, analysis_output)
-        print("Graph generation complete.")           
+        print("Graph generation complete.")
         print(graph_data)
 
-        # 5. Summarize Results (Markdown)
+        # 6. Summarize Results (Markdown)
         summary = summarize_results(user_question, analysis_output, output_file_path)
         print("Summary complete.", summary)
-        
-        # 6. Return payload
+
+        # 7. Return payload
         return jsonify({
             "success": True,
             "summary": str(summary),

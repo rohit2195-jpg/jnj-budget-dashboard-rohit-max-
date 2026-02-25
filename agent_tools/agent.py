@@ -1,9 +1,8 @@
 from langchain.agents import create_agent
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.tools import tool
 import os
 from dotenv import load_dotenv
-from agent_tools.tools import  generate_analysis_code_tool, execute_analysis_tool
+from agent_tools.tools import generate_analysis_code_tool, execute_analysis_tool
 from agent_tools.llm_model import model
 
 
@@ -13,46 +12,101 @@ load_dotenv()
 agent = create_agent(model, tools=[generate_analysis_code_tool, execute_analysis_tool])
 
 
-def callAgent(question, pre_process_output):
+def callAgent(question, manifest, plan):
+    # Extract structured fields from the manifest — no LLM text parsing needed
+    data_path = manifest["data_path"]
+    columns = manifest.get("columns", [])
+    dtypes = manifest.get("dtypes", {})
+    row_count = manifest.get("row_count", "unknown")
+    summary = manifest.get("summary", "")
+
+    # Format the checklist so the analyst executes every step
+    checklist_lines = "\n".join(
+        f"  {step['id']}. [{step['output_label']}] {step['description']}"
+        for step in plan.get("analyses", [])
+    )
 
     analysis_output = agent.invoke(
         {
             "messages": [
                 {
                     "role": "system",
-                    "content": """
-
-            You are a data anlayst, use your tools availble to best answer the user question by doing data anlysis on the data
-            User question: {question}
-            Pre_processing_output: {pre_process_output}
-            The data path will be found in the pre_processing_output
-            Hardcode the data path in your analysis , so that I can execute the program inside the agent_tools folder.
-
-            The generated code must define a function named 'analyze_spending_data'. This will be the top level or overall function.
-            The outputs of your analysis in python pandas will be sent to a graph agent, which will be responsible for turning your output into graphs
-            Your job is to only perform analysis on the data based on the user request, write pandas data anlysis code, then execute it.
-            We don't need any extra analysis from you, other than the output of your python pandas code.
-        """
+                    "content": """You are a data analyst. Use your tools to execute EVERY step in the analysis checklist.
+For each step, write and run pandas code that prints the results clearly labeled with the step's output_label.
+The generated code must define a function named 'analyze_spending_data'.
+Only output the results of your code execution — no commentary, no explanations outside the code output.
+"""
                 },
                 {
                     "role": "user",
-                    "content": f"""
-        User question: {question}
+                    "content": f"""User question: {question}
 
-        Pre_processing_output:
-        {pre_process_output}
+Dataset:
+- Path: {data_path}
+- Columns: {columns}
+- Column types: {dtypes}
+- Row count: {row_count}
 
-        The data path is inside the pre_processing_output.
-        """
+Analysis checklist — execute ALL of these steps in order:
+{checklist_lines}
+
+Use the data path above directly. Do not look for a different path.
+"""
                 }
             ]
         }
-        )
+    )
 
-    last_message = analysis_output["messages"][-1]
+    messages = analysis_output["messages"]
+
+    # The LLM's final message after tool use is often empty — the real analysis
+    # output is in the ToolMessage returned by execute_analysis_tool.
+    # Extract it by matching tool_call_ids from AIMessage.tool_calls.
+    result = _extract_execute_tool_output(messages)
+    if result.strip():
+        return result
+
+    # Fallback: last message content (handles cases where no tool was called)
+    last_message = messages[-1]
     content = last_message.content
-
-    print("TYPE:", type(content))  # should say list
-
-
+    if isinstance(content, list):
+        return content[0].get("text", "")
     return content
+
+
+def _extract_execute_tool_output(messages) -> str:
+    """
+    Walk the agent message history and return the captured stdout from every
+    execute_analysis_tool call, joined together.
+
+    LangChain message structure after tool use:
+      AIMessage(tool_calls=[{name, args, id}])  ← agent decides to call a tool
+      ToolMessage(content=..., tool_call_id=id) ← tool result
+      AIMessage(content="")                     ← LLM acknowledgment (often empty)
+
+    We want the ToolMessage content for execute_analysis_tool, not the final AIMessage.
+    """
+    # Step 1: collect IDs of every execute_analysis_tool call
+    execute_ids = set()
+    for msg in messages:
+        tool_calls = getattr(msg, "tool_calls", None)
+        if not tool_calls:
+            continue
+        for tc in tool_calls:
+            name = tc.get("name", "") if isinstance(tc, dict) else getattr(tc, "name", "")
+            tc_id = tc.get("id", "") if isinstance(tc, dict) else getattr(tc, "id", "")
+            if name == "execute_analysis_tool":
+                execute_ids.add(tc_id)
+
+    # Step 2: find ToolMessages whose tool_call_id matches
+    results = []
+    for msg in messages:
+        tool_call_id = getattr(msg, "tool_call_id", None)
+        if tool_call_id and tool_call_id in execute_ids:
+            content = msg.content
+            if isinstance(content, list):
+                content = content[0].get("text", "") if content else ""
+            if content:
+                results.append(content)
+
+    return "\n\n".join(results)

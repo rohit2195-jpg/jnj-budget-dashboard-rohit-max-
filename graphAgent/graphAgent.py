@@ -8,6 +8,13 @@ from graphAgent.tools import (
     add_bar_chart,
     add_line_chart,
     add_pie_chart,
+    add_horizontal_bar_chart,
+    add_stacked_bar_chart,
+    add_area_chart,
+    add_scatter_chart,
+    add_heatmap_chart,
+    add_radar_chart,
+    add_mixed_chart,
     reset_graph_registry,
     get_graph_registry
 )
@@ -17,7 +24,18 @@ load_dotenv()
 
 agent = create_agent(
     model,
-    tools=[add_bar_chart, add_line_chart, add_pie_chart]
+    tools=[
+        add_bar_chart,
+        add_line_chart,
+        add_pie_chart,
+        add_horizontal_bar_chart,
+        add_stacked_bar_chart,
+        add_area_chart,
+        add_scatter_chart,
+        add_heatmap_chart,
+        add_radar_chart,
+        add_mixed_chart,
+    ]
 )
 
 

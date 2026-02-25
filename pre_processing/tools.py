@@ -1,5 +1,6 @@
 
 import os
+from pathlib import Path
 import pandas as pd
 from google import genai
 from dotenv import load_dotenv
@@ -8,61 +9,67 @@ from langchain.tools import tool
 import json
 
 
+def _compute_output_path(data_path: str) -> str:
+    """Deterministically compute the cleaned output path from the input path."""
+    safe_stem = Path(data_path).stem.replace(" ", "_")
+    return f"pre_processing/processed_data/cleaned_{safe_stem}.json"
+
+
 @tool
-def generate_analysis_code(data_path:str) -> str:
+def generate_analysis_code(data_path: str) -> str:
     """
-    Generates Python code to pre-process the dataset. Will print saved location of processed dataset.
+    Generates Python code to pre-process the dataset.
+    The output path is determined by the input filename — no LLM involvement in naming.
     """
     print("Pre-processing generating cleaning code")
     load_dotenv()
     api_key = os.getenv("GEMINI_API_KEY")
-    MODEL_ID = os.getenv("MODEL_ID")
 
     if not api_key:
         return "print('Error: GEMINI_API_KEY not found. Please set it in a .env file.')"
 
-    client = genai.Client(api_key=api_key)
-
-    # Ensure the data path is valid
     if not os.path.exists(data_path):
         print(f'Error: Data file not found at {data_path}')
-        return 
+        return
 
-    # Get the header of the CSV for context
+    # Deterministic output path — same formula used in callPreProcessAgent
+    output_path = _compute_output_path(data_path)
+
     try:
-        df = pd.read_json(data_path)
-        df_header = pd.read_json(data_path).columns.tolist()
-        df_first_rows = pd.read_json(data_path).head(5).to_string()
-        info = df
+        if data_path.lower().endswith('.csv'):
+            df = pd.read_csv(data_path)
+        else:
+            df = pd.read_json(data_path)
+        df_header = df.columns.tolist()
+        df_first_rows = df.head(5).to_string()
     except Exception as e:
         print(f'Error reading data file: {e}')
-        return 
+        return
 
     prompt = f"""
-    You are a data pre-processor
+    You are a data pre-processor.
     The dataset is located at: {data_path}
-    The data is in JSON format and its columns are: {df_header}
-    First five rows in the data: {df_first_rows}
+    The data columns are: {df_header}
+    First five rows: {df_first_rows}
 
-    Please pre-process the data by cleaning, transforming, and organizing raw data into a usable format for future analysis and machine learning
-    Hardcode the data path in your code.
+    Please pre-process the data by cleaning, transforming, and organizing raw data into a usable format for future analysis and machine learning.
+    Hardcode both the input and output paths in your code.
 
-    Based on the user's question, please generate a Python script that uses the pandas library to perform the analysis.
-    The script should:
-    1. Load the JSON data from the specified path.
-    2. Write code to pre-process, and clean the data
-    3. Get some understanding of the dataset
-    4. Save cleaned dataset to 'pre_processing/processed_data/[file_name_here]' as a json file
-    5. Print path of the cleaned dataset ex. (pre_processing/processed_data/[file_name_here])
+    Generate a Python script that uses pandas and:
+    1. Loads the data from '{data_path}'
+       - Use pd.read_csv if the path ends with .csv, otherwise use pd.read_json
+    2. Cleans and pre-processes the data (handle nulls, fix types, rename columns if needed)
+    3. Saves the cleaned dataset as JSON to EXACTLY this path: '{output_path}'
+       - Include: os.makedirs('pre_processing/processed_data', exist_ok=True) before saving
+    4. Prints a brief summary of the cleaned dataset (shape, columns, sample rows)
 
-
+    The function must be named 'process_data' and accept a single argument: file_path (the input data path).
+    The output path must be hardcoded inside the function as: '{output_path}'
     Your code should be executable and self-contained. Do not include any markdown formatting.
     """
 
     try:
         response = model.invoke(prompt)
-        
-        # clean response
         response = response.text
         response = response.strip('```').lstrip('python')
         print('------Code generated------')
@@ -70,7 +77,7 @@ def generate_analysis_code(data_path:str) -> str:
         return response
     except Exception as e:
         print(f'An error occurred with the LLM: {e}')
-        return 
+        return
 
 def execute_analysis(code, *args, target_function=None, **kwargs):
     """
