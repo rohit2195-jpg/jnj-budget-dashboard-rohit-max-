@@ -57,6 +57,7 @@ def analyze_data():
         print("Analysis complete.", analysis_output)
 
         # 5. Generate Graph Configurations
+        
         graph_data = create_graph(user_question, analysis_output)
         print("Graph generation complete.")
         print(graph_data)
