@@ -1,83 +1,153 @@
-import sys
 import os
-import json
+import uuid
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from langgraph.types import Command
 
-from agent_tools.agent import callAgent
-from summarizerAgent.summarizer_agent import summarize_results
-from pre_processing.processing_agent import callPreProcessAgent
-from plannerAgent.planner_agent import create_analysis_plan
-from graphAgent.graphAgent import create_graph
+from pipeline.graph import pipeline
 
 app = Flask(__name__)
 CORS(app)
 
-@app.route('/api/analyze', methods=['POST'])
-def analyze_data():
-    """
-    REST API endpoint that receives a user question, runs the analysis pipeline, 
-    and returns the summary markdown and graph JSON to the frontend.
-    """
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POST /api/analyze/start
+#
+# Runs preprocess → plan → human_review (interrupt).
+# Returns the analysis plan to the frontend for user approval.
+#
+# Request body:  { "question": "...", "filepath": "..." }
+# Response:
+#   pending_approval: { "status": "pending_approval", "thread_id": "...", "plan": {...} }
+#   error:            { "status": "error", "error": "..." }
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route('/api/analyze/start', methods=['POST'])
+def start_analysis():
     try:
-        # 1. Extract data from the incoming request
         data = request.json
         if not data:
             return jsonify({"error": "No JSON payload provided"}), 400
 
         user_question = data.get('question')
-        
-        # You can either pass this from frontend or hardcode it if it's always the same
-        # data/US Spending Data/spending_data.json
         data_path = data.get('filepath', 'data/f1/F1 2026 Bahrain Testing Day 3.csv')
-        # metadata_path = './data/US Spending Data/metadata.txt'
-        output_file_path = ''
 
         if not user_question:
             return jsonify({"error": "Missing 'question' in request body"}), 400
-            
+
         if not os.path.exists(data_path):
-            return jsonify({"error": f"The file '{data_path}' was not found."}), 404
+            return jsonify({"error": f"File not found: '{data_path}'"}), 404
 
-        print(f"Starting analysis for question: {user_question}")
+        thread_id = str(uuid.uuid4())
+        config = {"configurable": {"thread_id": thread_id}}
 
-        # 2. Pre-processing
-        manifest = callPreProcessAgent(data_path)
-        print("Pre-processing complete. Data path:", manifest.get("data_path"))
+        initial_state = {
+            "question":    user_question,
+            "data_path":   data_path,
+            "retry_count": 0,
+            "error":       None,
+            "approved":    None,
+        }
 
-        if manifest.get("status") == "error":
-            return jsonify({"error": f"Preprocessing failed: {manifest.get('error')}"}), 500
+        print(f"[{thread_id[:8]}] Starting pipeline for: {user_question}")
 
-        # 3. Build analysis checklist from schema + question
-        plan = create_analysis_plan(user_question, manifest)
-        print("Analysis plan created:", [s["output_label"] for s in plan["analyses"]])
+        # Run until interrupt() fires in human_review_node (or until END on error).
+        for _ in pipeline.stream(initial_state, config=config):
+            pass
 
-        # 4. Data Analysis
-        analysis_output = callAgent(user_question, manifest, plan)
-        print("Analysis complete.", analysis_output)
+        graph_state = pipeline.get_state(config)
 
-        # 5. Generate Graph Configurations
-        
-        graph_data = create_graph(user_question, analysis_output)
-        print("Graph generation complete.")
-        print(graph_data)
+        # Check whether the graph is paused at an interrupt
+        is_interrupted = any(bool(task.interrupts) for task in graph_state.tasks)
 
-        # 6. Summarize Results (Markdown)
-        summary = summarize_results(user_question, analysis_output, output_file_path)
-        print("Summary complete.", summary)
+        if is_interrupted:
+            # Graph paused at human_review_node — surface plan to frontend
+            interrupt_value = graph_state.tasks[0].interrupts[0].value
+            plan = interrupt_value.get("plan", graph_state.values.get("plan", {}))
+            print(f"[{thread_id[:8]}] Graph paused for human review.")
+            return jsonify({
+                "status":    "pending_approval",
+                "thread_id": thread_id,
+                "plan":      plan,
+            }), 200
 
-        # 7. Return payload
+        # Graph ended early (preprocess or plan failed)
+        values = graph_state.values
+        if values.get("error"):
+            return jsonify({"status": "error", "error": values["error"]}), 500
+
+        # Unexpected: graph completed without interrupt
+        return jsonify({"status": "error", "error": "Unexpected pipeline termination."}), 500
+
+    except Exception as exc:
+        print(f"Error in /api/analyze/start: {exc}")
+        return jsonify({"error": str(exc)}), 500
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POST /api/analyze/resume
+#
+# Resumes the paused pipeline after human approves/rejects the plan.
+# Runs analyze → graph_gen → summarize.
+#
+# Request body:  { "thread_id": "...", "approved": true/false }
+# Response:
+#   approved:   { "status": "complete", "success": true, "summary": "...", "graphs": {...} }
+#   rejected:   { "status": "rejected" }
+#   error:      { "status": "error", "error": "..." }
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route('/api/analyze/resume', methods=['POST'])
+def resume_analysis():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "No JSON payload provided"}), 400
+
+        thread_id = data.get('thread_id')
+        approved  = data.get('approved')
+
+        if not thread_id:
+            return jsonify({"error": "Missing 'thread_id'"}), 400
+        if approved is None:
+            return jsonify({"error": "Missing 'approved' field"}), 400
+
+        config = {"configurable": {"thread_id": thread_id}}
+
+        # Verify the thread is actually paused waiting for approval
+        graph_state = pipeline.get_state(config)
+        is_interrupted = any(bool(task.interrupts) for task in graph_state.tasks)
+        if not is_interrupted:
+            return jsonify({"error": "No pending approval found for this thread_id."}), 400
+
+        print(f"[{thread_id[:8]}] Resuming with approved={approved}")
+
+        # Resume: Command(resume=approved) makes interrupt() return `approved`
+        # inside human_review_node, which stores it as state["approved"].
+        for _ in pipeline.stream(Command(resume=approved), config=config):
+            pass
+
+        final_values = pipeline.get_state(config).values
+
+        if not approved:
+            return jsonify({"status": "rejected"}), 200
+
+        if final_values.get("error") and not final_values.get("summary"):
+            return jsonify({"status": "error", "error": final_values["error"]}), 500
+
         return jsonify({
+            "status":  "complete",
             "success": True,
-            "summary": str(summary),
-            "graphs": graph_data
+            "summary": final_values.get("summary", ""),
+            "graphs":  final_values.get("graph_data", {"charts": []}),
         }), 200
 
-    except Exception as e:
-        print(f"Error during analysis: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+    except Exception as exc:
+        print(f"Error in /api/analyze/resume: {exc}")
+        return jsonify({"error": str(exc)}), 500
 
 
 if __name__ == '__main__':
-    # Run the Flask app
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    # use_reloader=False prevents a child-process fork that would lose the
+    # in-memory MemorySaver state between /start and /resume calls.
+    app.run(debug=True, host='0.0.0.0', port=5001, use_reloader=False)

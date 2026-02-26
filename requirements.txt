@@ -12,6 +12,9 @@ matplotlib
 langchain-google-genai
 langchain
 
+# LangGraph (human-in-the-loop pipeline)
+langgraph>=0.2
+
 #backend
 flask
 flask-cors

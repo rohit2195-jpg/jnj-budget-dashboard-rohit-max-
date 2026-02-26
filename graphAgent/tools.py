@@ -111,6 +111,9 @@ Best for: Category comparison, rankings, top 10 lists.
                     "distributed": True  # each bar different color
                 }
             },
+            "dataLabels": {
+                "enabled": False
+            },
             "xaxis": {
                 "categories": categories
             }
@@ -199,6 +202,9 @@ Best for: Top 10 rankings, company comparisons, long names.
                     "distributed": True
                 }
             },
+            "dataLabels": {
+                "enabled": False
+            },
             "xaxis": {
                 "categories": categories
             }
@@ -247,6 +253,9 @@ Best for: Revenue breakdowns, budget segments, multi-group comparisons.
             },
             "chart": {
                 "stacked": True
+            },
+            "dataLabels": {
+                "enabled": False
             },
             "xaxis": {
                 "categories": categories
@@ -478,6 +487,9 @@ Best for: Revenue vs growth rate, volume vs percentage, dual-axis insights.
         ],
         "options": {
             "colors": [COLOR_PALETTE[0], COLOR_PALETTE[3]],
+            "dataLabels": {
+                "enabled": False
+            },
             "xaxis": {
                 "categories": categories
             }
