@@ -52,6 +52,9 @@ Rules:
 - If date/time columns are present, include at least one trend or time-series step
 - If category + numeric columns are present, include at least one ranking or aggregation step
 - Steps may reference results from previous steps (e.g. "using the top 10 from step 1...")
+- If a step aggregates across many categories (e.g. by sub-agency, by vendor, by region),
+  limit it to the top 15 most significant items by value. Phrase the description as
+  "top 15 X by Y" so the analyst knows to truncate.
 - Output ONLY the JSON object. No markdown fences, no explanation, no extra text.
 """
 

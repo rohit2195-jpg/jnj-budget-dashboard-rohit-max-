@@ -51,6 +51,9 @@ The generated code must define a function named 'analyze_spending_data(file_path
    }
 4. Converts all numpy types with .item() or float() before inserting into results
 5. Ends with: import json; print(json.dumps(results))
+6. For categorical/ranking results, include at most 15 items sorted by value descending.
+   If the data has more than 15 categories, sum the remaining values into a single final
+   entry labelled "Other".
 
 Only call tools to run code. Do not output commentary.
 """

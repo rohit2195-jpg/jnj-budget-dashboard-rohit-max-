@@ -11,7 +11,6 @@
     "driver_name",
     "team_name",
     "lap_number",
-    "lap_time",
     "lap_time_sec",
     "timestamp_utc"
   ],
@@ -25,12 +24,11 @@
     "driver_name": "str",
     "team_name": "str",
     "lap_number": "int64",
-    "lap_time": "str",
     "lap_time_sec": "float64",
     "timestamp_utc": "datetime64[us]"
   },
   "row_count": 1149,
-  "summary": "The dataset has been successfully pre-processed and saved.\n\n### Cleaned Dataset Overview\n\n*   **Shape**: The cleaned dataset contains **1,149 rows** and **12 columns**.\n\n*   **Columns**: The dataset includes the following columns: `season`, `event_name`, `circuit`, `session_type`, `driver_number`, `driver_code`, `driver_name`, `team_name`, `lap_number`, `lap_time`, `lap_time_sec`, and `timestamp_utc`.\n\n*   **Notable Characteristics**:\n    *   The data represents lap times from the third day of F1 pre-season testing.\n    *   Rows with missing lap times and any duplicate entries have been removed.\n    *   Data types have been standardized, with `timestamp_utc` converted to a proper datetime format and numerical columns set to their appropriate types.\n    *   The dataset is organized and sorted by driver and lap number for sequential analysis.",
-  "created_at": "2026-02-28T13:50:51.751722",
+  "summary": "The dataset has been successfully pre-processed and saved.\n\n### Cleaned Data Overview\n\nThe cleaned dataset contains F1 testing data with **1149 rows and 11 columns**.\n\n**Columns:**\n- `season`\n- `event_name`\n- `circuit`\n- `session_type`\n- `driver_number`\n- `driver_code`\n- `driver_name`\n- `team_name`\n- `lap_number`\n- `lap_time_sec`\n- `timestamp_utc`\n\n**Notable Characteristics:**\n- The dataset is well-structured with no missing values.\n- Data types have been corrected, with `timestamp_utc` converted to a proper datetime format and numerical columns set to appropriate integer and float types.\n- The data is sorted by driver and lap number for easier analysis.",
+  "created_at": "2026-02-28T14:13:56.154455",
   "status": "success"
 }

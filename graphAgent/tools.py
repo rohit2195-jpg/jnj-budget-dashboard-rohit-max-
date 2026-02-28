@@ -4,14 +4,24 @@ from typing import List
 graph_registry = []
 
 COLOR_PALETTE = [
-    "#6366F1",  # Indigo
-    "#22C55E",  # Green
-    "#F59E0B",  # Amber
-    "#EF4444",  # Red
-    "#3B82F6",  # Blue
-    "#A855F7",  # Purple
-    "#14B8A6",  # Teal
+    "#6366F1", "#22C55E", "#F59E0B", "#EF4444", "#3B82F6",
+    "#A855F7", "#14B8A6", "#F97316", "#EC4899", "#84CC16",
+    "#06B6D4", "#8B5CF6", "#10B981", "#F43F5E", "#64748B",
 ]
+
+
+def _cap_series(categories, values, n=15):
+    """Sort by value descending, keep top n-1, collapse rest into 'Other'."""
+    if len(categories) <= n:
+        return list(categories), list(values)
+    paired = sorted(zip(values, categories), reverse=True)
+    top = paired[:n - 1]
+    other_val = sum(v for v, _ in paired[n - 1:])
+    top_vals = [v for v, _ in top]
+    top_cats = [c for _, c in top]
+    top_vals.append(other_val)
+    top_cats.append("Other")
+    return top_cats, top_vals
 
 def reset_graph_registry():
     global graph_registry
@@ -46,6 +56,8 @@ Parameters:
 
 Best for: Time series analysis, trend detection, forecasting signals.
 """
+    categories = list(categories)[:50]
+    values = list(values)[:50]
     graph_registry.append({
         "id": chart_id,
         "title": title,
@@ -55,6 +67,9 @@ Best for: Time series analysis, trend detection, forecasting signals.
             "data": values
         }],
         "options": {
+            "chart": {
+                "toolbar": {"show": False}
+            },
             "colors": [COLOR_PALETTE[0]],
             "stroke": {
                 "curve": "smooth",
@@ -95,6 +110,7 @@ Parameters:
 
 Best for: Category comparison, rankings, top 10 lists.
 """
+    categories, values = _cap_series(categories, values, n=15)
     graph_registry.append({
         "id": chart_id,
         "title": title,
@@ -104,18 +120,26 @@ Best for: Category comparison, rankings, top 10 lists.
             "data": values
         }],
         "options": {
+            "chart": {
+                "toolbar": {"show": False}
+            },
             "colors": COLOR_PALETTE[:len(values)],
             "plotOptions": {
                 "bar": {
                     "borderRadius": 6,
-                    "distributed": True  # each bar different color
+                    "distributed": True
                 }
             },
             "dataLabels": {
                 "enabled": False
             },
             "xaxis": {
-                "categories": categories
+                "categories": categories,
+                "labels": {
+                    "rotate": -45,
+                    "trim": True,
+                    "maxHeight": 80,
+                }
             }
         }
     })
@@ -145,12 +169,16 @@ Parameters:
 Best for: Market share, budget allocation, distribution analysis.
 Avoid if too many categories.
 """
+    labels, values = _cap_series(labels, values, n=6)
     graph_registry.append({
         "id": chart_id,
         "title": title,
         "type": "pie",
         "series": values,
         "options": {
+            "chart": {
+                "toolbar": {"show": False}
+            },
             "colors": COLOR_PALETTE[:len(values)],
             "labels": labels,
             "legend": {
@@ -185,6 +213,7 @@ Parameters:
 
 Best for: Top 10 rankings, company comparisons, long names.
 """
+    categories, values = _cap_series(categories, values, n=15)
     graph_registry.append({
         "id": chart_id,
         "title": title,
@@ -194,6 +223,9 @@ Best for: Top 10 rankings, company comparisons, long names.
             "data": values
         }],
         "options": {
+            "chart": {
+                "toolbar": {"show": False}
+            },
             "colors": COLOR_PALETTE[:len(values)],
             "plotOptions": {
                 "bar": {
@@ -207,6 +239,12 @@ Best for: Top 10 rankings, company comparisons, long names.
             },
             "xaxis": {
                 "categories": categories
+            },
+            "yaxis": {
+                "labels": {
+                    "maxWidth": 150,
+                    "style": {"fontSize": "12px"}
+                }
             }
         }
     })
@@ -239,6 +277,10 @@ Parameters:
 
 Best for: Revenue breakdowns, budget segments, multi-group comparisons.
 """
+    cap = 15
+    if len(categories) > cap:
+        categories = list(categories)[:cap]
+        series = [{"name": s["name"], "data": list(s["data"])[:cap]} for s in series]
     graph_registry.append({
         "id": chart_id,
         "title": title,
@@ -252,13 +294,19 @@ Best for: Revenue breakdowns, budget segments, multi-group comparisons.
                 }
             },
             "chart": {
-                "stacked": True
+                "stacked": True,
+                "toolbar": {"show": False}
             },
             "dataLabels": {
                 "enabled": False
             },
             "xaxis": {
-                "categories": categories
+                "categories": categories,
+                "labels": {
+                    "rotate": -45,
+                    "trim": True,
+                    "maxHeight": 80,
+                }
             }
         }
     })
@@ -290,6 +338,8 @@ Parameters:
 
 Best for: Growth trends, cumulative values, volume over time.
 """
+    categories = list(categories)[:50]
+    values = list(values)[:50]
     graph_registry.append({
         "id": chart_id,
         "title": title,
@@ -299,6 +349,9 @@ Best for: Growth trends, cumulative values, volume over time.
             "data": values
         }],
         "options": {
+            "chart": {
+                "toolbar": {"show": False}
+            },
             "colors": [COLOR_PALETTE[1]],
             "stroke": {
                 "curve": "smooth"
@@ -347,6 +400,9 @@ Best for: Correlation analysis, regression exploration, anomaly detection.
             "data": data
         }],
         "options": {
+            "chart": {
+                "toolbar": {"show": False}
+            },
             "colors": [COLOR_PALETTE[2]],
             "xaxis": {
                 "type": "numeric"
@@ -389,6 +445,9 @@ Best for: Activity frequency, performance matrices, time vs category analysis.
         "type": "heatmap",
         "series": series,
         "options": {
+            "chart": {
+                "toolbar": {"show": False}
+            },
             "colors": ["#008FFB"],
             "dataLabels": {
                 "enabled": False
@@ -432,6 +491,9 @@ Best for: Performance evaluation, skill comparison, multi-metric scoring.
             "data": values
         }],
         "options": {
+            "chart": {
+                "toolbar": {"show": False}
+            },
             "colors": [COLOR_PALETTE[4]],
             "xaxis": {
                 "categories": categories
@@ -486,6 +548,9 @@ Best for: Revenue vs growth rate, volume vs percentage, dual-axis insights.
             }
         ],
         "options": {
+            "chart": {
+                "toolbar": {"show": False}
+            },
             "colors": [COLOR_PALETTE[0], COLOR_PALETTE[3]],
             "dataLabels": {
                 "enabled": False
