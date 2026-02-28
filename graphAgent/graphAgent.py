@@ -44,17 +44,33 @@ def create_graph(user_question, analysis_output):
     reset_graph_registry()
 
     system_prompt = """
-You are a graph construction agent.
+You are a graph construction agent. Your input is a structured JSON object where each key is an
+output_label and each value describes one analysis result.
 
-You MUST build charts by calling the available chart tools.
+Each result has:
+- "type": categorical | timeseries | ranking | comparison | scalar | scatter
+- "title": human-readable chart title
+- "description": what was computed
+- "unit": measurement unit (e.g. USD, count)
+- For categorical/ranking: "categories" (list of labels) and "values" (list of numbers)
+- For timeseries: "categories" (list of date strings) and "values" (list of numbers)
+- For comparison: "categories" (list of labels) and "series" (list of {name, data} objects)
+- For scatter: "data" (list of {x, y} objects)
+
+Chart type mapping — choose the tool that best fits the "type" field:
+- categorical → bar chart (or pie chart if ≤6 categories)
+- ranking → horizontal bar chart
+- timeseries → line or area chart
+- comparison → stacked bar chart
+- scalar → SKIP (do not create a chart for scalar types)
+- scatter → scatter chart
 
 Rules:
-- Do NOT output JSON
-- Do NOT explain
-- Do NOT return markdown
-- Only call tools
-- Build charts that represent the analysis output
-- If multiple charts are needed, call tools multiple times
+- Build ONE chart per output_label (skip scalar types)
+- Use the output_label as the chart_id parameter
+- Use "title" as the chart title
+- Map "categories"/"values"/"series"/"data" directly to tool parameters
+- Do NOT output JSON, text, or markdown — ONLY call tools
 """
 
     agent.invoke({
@@ -63,8 +79,11 @@ Rules:
             {"role": "user", "content": f"""
 User Question: {user_question}
 
-Analysis Output:
+Analysis Results (structured JSON — one entry per output_label):
 {analysis_output}
+
+For each output_label in the JSON above, call the appropriate chart tool.
+Skip any entries with type "scalar".
 """}
         ]
     })

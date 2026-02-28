@@ -1,10 +1,49 @@
 
 import os
+import re
+import warnings
 import pandas as pd
 from google import genai
 from dotenv import load_dotenv
 from .llm_model import model
 import json
+
+
+def _extract_json_from_output(raw: str):
+    """
+    Try to find a JSON dict in raw captured stdout.
+
+    Strategy 1+2: scan lines from bottom up for any line that starts with '{'
+                  and parses as a JSON dict.
+    Strategy 3:   fallback regex for multiline JSON.
+
+    Returns dict on success, None on failure.
+    """
+    if not raw:
+        return None
+
+    # Strategy 1+2: bottom-up line scan
+    for line in reversed(raw.splitlines()):
+        line = line.strip()
+        if line.startswith("{"):
+            try:
+                parsed = json.loads(line)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                pass
+
+    # Strategy 3: multiline regex fallback
+    match = re.search(r'\{.*\}', raw, re.DOTALL)
+    if match:
+        try:
+            parsed = json.loads(match.group())
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            pass
+
+    return None
 
 
 def generate_analysis_code(user_question, data_path):
@@ -134,4 +173,8 @@ def execute_analysis(code, *args, target_function=None, **kwargs):
     print("------Code output------")
     print(ans)
 
+    parsed = _extract_json_from_output(ans)
+    if parsed is not None:
+        return parsed
+    warnings.warn("No JSON emitted; falling back to raw string", RuntimeWarning)
     return ans

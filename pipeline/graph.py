@@ -4,7 +4,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import interrupt
 
-from pipeline.state import PipelineState
+from pipeline.state import PipelineState, serialize_analysis_output
 
 # Existing agent imports
 from pre_processing.processing_agent import callPreProcessAgent
@@ -74,9 +74,14 @@ def analyze_node(state: PipelineState) -> dict:
     """
     try:
         output = callAgent(state["question"], state["manifest"], state["plan"])
-        if not output or not output.strip():
+        if not output or (isinstance(output, str) and not output.strip()):
             return {
                 "error": "Analysis produced empty output.",
+                "analysis_output": None,
+            }
+        if isinstance(output, str) and "An error occurred during execution:" in output:
+            return {
+                "error": f"Code execution failed: {output[:300]}",
                 "analysis_output": None,
             }
         return {"analysis_output": output, "error": None}
@@ -104,7 +109,8 @@ def graph_gen_node(state: PipelineState) -> dict:
     Run create_graph.  Failure is non-fatal — summarize still runs.
     """
     try:
-        graph_data = create_graph(state["question"], state["analysis_output"])
+        serialized = serialize_analysis_output(state.get("analysis_output"))
+        graph_data = create_graph(state["question"], serialized)
         return {"graph_data": graph_data}
     except Exception as exc:
         return {"graph_data": {"charts": []}, "error": f"Graph generation exception: {exc}"}
@@ -115,7 +121,8 @@ def summarize_node(state: PipelineState) -> dict:
     Run summarize_results.
     """
     try:
-        summary = summarize_results(state["question"], state["analysis_output"], "")
+        serialized = serialize_analysis_output(state.get("analysis_output"))
+        summary = summarize_results(state["question"], serialized, "")
         return {"summary": str(summary)}
     except Exception as exc:
         return {"error": f"Summarization exception: {exc}"}

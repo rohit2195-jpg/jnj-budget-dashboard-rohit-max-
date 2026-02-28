@@ -26,7 +26,17 @@ def summarize_results(user_question, analysis_output, outputFilePath):
     The user asked:
     "{user_question}"
 
-    The dataset analysis produced the following raw results:
+    The dataset analysis produced the following structured JSON results. Each key is an
+    output_label identifying one analysis result. Each value contains:
+    - "type": the kind of analysis (categorical, timeseries, comparison, scalar, etc.)
+    - "title": human-readable name for this result
+    - "description": what was computed
+    - "unit": measurement unit (e.g. USD, count, percent)
+    - "categories": list of labels (for categorical/timeseries/comparison)
+    - "values": list of numeric results (for categorical/timeseries)
+    - "series": list of {{name, data}} objects (for comparison)
+
+    Structured analysis results:
     ---
     {analysis_output}
     ---
@@ -34,13 +44,14 @@ def summarize_results(user_question, analysis_output, outputFilePath):
     Your task:
 
     1. Write a clear, well-structured markdown report explaining the results.
-    2. Include:
-    - A concise executive summary
-    - A detailed explanation of the findings
-    - Additional insights or interesting observations
-    - Any notable trends, anomalies, or patterns
-    3. Use proper markdown formatting with headings (##, ###), bullet points, and emphasis where appropriate.
-    4. The entire output must be valid markdown.
+    2. For each output_label in the JSON, write a dedicated section using "title" as the
+       ### heading. Reference the actual numeric values from "values" or "series" in your prose —
+       do not write vague generalities. Use "unit" to label measurements correctly.
+    3. Also include:
+    - A concise executive summary (## heading) at the top
+    - Additional insights, notable trends, anomalies, or patterns
+    4. Use proper markdown formatting with headings (##, ###), bullet points, and **emphasis**.
+    5. The entire output must be valid markdown.
 
     File Saving Requirements:
     - Save the markdown report to this file path: {outputFilePath}

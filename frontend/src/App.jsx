@@ -267,19 +267,9 @@ function App() {
             </div>
           )}
 
-          {/* Dashboard (original layout, unchanged) */}
+          {/* Dashboard (charts on top, report below) */}
           {appState === 'complete' && data && (
             <div className="dashboard-grid">
-              <section className="report-section">
-                <div className="card-header">
-                  <FileText className="card-icon" />
-                  <h2>Analysis Report</h2>
-                </div>
-                <div className="report-content">
-                  <ReactMarkdown>{data.summary}</ReactMarkdown>
-                </div>
-              </section>
-
               <section className="charts-section">
                 <div className="card-header">
                   <LayoutDashboard className="card-icon" />
@@ -309,7 +299,7 @@ function App() {
                             series={chart.series || []}
                             type={chart.type || 'bar'}
                             width="100%"
-                            height="350"
+                            height="450"
                           />
                         </div>
                       );
@@ -317,6 +307,16 @@ function App() {
                   ) : (
                     <p className="no-charts">No visual data generated for this query.</p>
                   )}
+                </div>
+              </section>
+
+              <section className="report-section">
+                <div className="card-header">
+                  <FileText className="card-icon" />
+                  <h2>Analysis Report</h2>
+                </div>
+                <div className="report-content">
+                  <ReactMarkdown>{data.summary}</ReactMarkdown>
                 </div>
               </section>
             </div>

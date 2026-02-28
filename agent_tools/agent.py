@@ -3,13 +3,13 @@ from langchain.tools import tool
 import os
 from dotenv import load_dotenv
 from agent_tools.tools import generate_analysis_code_tool, execute_analysis_tool
-from agent_tools.llm_model import model
+from agent_tools.llm_model import code_llm
 
 
 load_dotenv()
 
 
-agent = create_agent(model, tools=[generate_analysis_code_tool, execute_analysis_tool])
+agent = create_agent(code_llm, tools=[generate_analysis_code_tool, execute_analysis_tool])
 
 
 def callAgent(question, manifest, plan):
@@ -32,9 +32,27 @@ def callAgent(question, manifest, plan):
                 {
                     "role": "system",
                     "content": """You are a data analyst. Use your tools to execute EVERY step in the analysis checklist.
-For each step, write and run pandas code that prints the results clearly labeled with the step's output_label.
-The generated code must define a function named 'analyze_spending_data'.
-Only output the results of your code execution — no commentary, no explanations outside the code output.
+
+The generated code must define a function named 'analyze_spending_data(file_path)' that:
+1. Performs ALL checklist steps using pandas
+2. Builds a `results` dict keyed by each step's output_label
+3. Each value in `results` must follow this typed schema:
+   {
+     "type": "<categorical|timeseries|ranking|comparison|scalar|scatter>",
+     "title": "<human-readable title>",
+     "description": "<what was computed>",
+     "unit": "<USD|count|percent|etc>",
+     // For categorical/ranking/timeseries:
+     "categories": ["label1", "label2", ...],
+     "values": [num1, num2, ...],
+     // For comparison (multiple series):
+     "categories": ["label1", ...],
+     "series": [{"name": "Series A", "data": [num1, ...]}, ...]
+   }
+4. Converts all numpy types with .item() or float() before inserting into results
+5. Ends with: import json; print(json.dumps(results))
+
+Only call tools to run code. Do not output commentary.
 """
                 },
                 {
@@ -51,6 +69,9 @@ Analysis checklist — execute ALL of these steps in order:
 {checklist_lines}
 
 Use the data path above directly. Do not look for a different path.
+
+IMPORTANT: The `results` dict MUST have a key for each output_label listed above: {[step['output_label'] for step in plan.get('analyses', [])]}.
+The final line of analyze_spending_data MUST be: import json; print(json.dumps(results))
 """
                 }
             ]
@@ -64,7 +85,9 @@ Use the data path above directly. Do not look for a different path.
     # Extract it by matching tool_call_ids from AIMessage.tool_calls.
     result = _extract_execute_tool_output(messages)
     if result.strip():
-        return result
+        from agent_tools.analyzer import _extract_json_from_output
+        parsed = _extract_json_from_output(result)
+        return parsed if parsed is not None else result
 
     # Fallback: last message content (handles cases where no tool was called)
     last_message = messages[-1]

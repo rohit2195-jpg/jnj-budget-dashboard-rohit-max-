@@ -243,16 +243,15 @@
   min-width: 0;
 }
 
-/* ── Dashboard grid (original, unchanged) ───────────────────────────────────── */
+/* ── Dashboard grid (charts on top, report below) ───────────────────────────── */
 .dashboard-grid {
-  display: grid;
-  grid-template-columns: 700px 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 2.5rem;
-  align-items: start;
 }
 
 @media (max-width: 1024px) {
-  .dashboard-grid {
+  .charts-grid {
     grid-template-columns: 1fr;
   }
   .sidebar {
@@ -304,8 +303,8 @@
 }
 
 .charts-grid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
   gap: 2rem;
 }
 

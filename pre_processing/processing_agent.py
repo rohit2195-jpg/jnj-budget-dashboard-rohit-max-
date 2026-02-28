@@ -6,13 +6,13 @@ import json
 import os
 import pandas as pd
 from dotenv import load_dotenv
-from agent_tools.llm_model import model
+from agent_tools.llm_model import code_llm
 from pre_processing.tools import generate_analysis_code, execute_analysis_tool, _compute_output_path
 
 load_dotenv()
 
 
-pre_process_agent = create_agent(model, tools=[generate_analysis_code, execute_analysis_tool])
+pre_process_agent = create_agent(code_llm, tools=[generate_analysis_code, execute_analysis_tool])
 
 
 def callPreProcessAgent(data_path):
