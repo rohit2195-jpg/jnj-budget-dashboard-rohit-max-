@@ -7,7 +7,7 @@ import os
 import pandas as pd
 from dotenv import load_dotenv
 from agent_tools.llm_model import code_llm
-from pre_processing.tools import generate_analysis_code, execute_analysis_tool, _compute_output_path
+from pre_processing.tools import generate_analysis_code, execute_analysis_tool, _compute_output_path, _compute_manifest_path, compute_file_hash
 
 load_dotenv()
 
@@ -18,7 +18,16 @@ pre_process_agent = create_agent(code_llm, tools=[generate_analysis_code, execut
 def callPreProcessAgent(data_path):
     # Compute output path deterministically in Python — no LLM involvement
     output_path = _compute_output_path(data_path)
-    manifest_path = "pre_processing/processed_data/manifest.json"
+    manifest_path = _compute_manifest_path(data_path)
+    file_hash = compute_file_hash(data_path)
+
+    # Cache hit: skip all LLM calls if file hasn't changed
+    if os.path.exists(manifest_path) and os.path.exists(output_path):
+        with open(manifest_path) as f:
+            cached = json.load(f)
+        if cached.get("file_hash") == file_hash:
+            print(f"Cache hit for {data_path} — skipping preprocessing")
+            return cached
 
     analysis_output = pre_process_agent.invoke(
         {"messages": [{"role": "user",
@@ -66,12 +75,13 @@ def callPreProcessAgent(data_path):
         "row_count": len(df),
         "summary": summary,
         "created_at": datetime.utcnow().isoformat(),
-        "status": "success"
+        "status": "success",
+        "file_hash": file_hash,
     }
 
     os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
     with open(manifest_path, "w") as f:
-        json.dump(manifest, f, indent=2)
+        json.dump(manifest, f, indent=2, default=str)
 
     print(f"Manifest written to {manifest_path}")
     return manifest

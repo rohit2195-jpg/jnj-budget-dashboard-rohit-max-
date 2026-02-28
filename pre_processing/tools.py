@@ -1,5 +1,6 @@
 
 import os
+import hashlib
 from pathlib import Path
 import pandas as pd
 from google import genai
@@ -13,6 +14,21 @@ def _compute_output_path(data_path: str) -> str:
     """Deterministically compute the cleaned output path from the input path."""
     safe_stem = Path(data_path).stem.replace(" ", "_")
     return f"pre_processing/processed_data/cleaned_{safe_stem}.json"
+
+
+def _compute_manifest_path(data_path: str) -> str:
+    """Deterministically compute the per-file manifest path from the input path."""
+    safe_stem = Path(data_path).stem.replace(" ", "_")
+    return f"pre_processing/processed_data/cleaned_{safe_stem}_manifest.json"
+
+
+def compute_file_hash(data_path: str) -> str:
+    """Compute MD5 hex digest of a file, reading in chunks."""
+    h = hashlib.md5()
+    with open(data_path, "rb") as f:
+        for chunk in iter(lambda: f.read(65536), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 @tool

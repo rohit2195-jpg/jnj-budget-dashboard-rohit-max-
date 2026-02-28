@@ -38,14 +38,6 @@ These are correctness and consistency fixes with the highest ROI.
 
 Reliability improvements, developer experience, and output quality.
 
-### [M1] Cache preprocessed data by file hash
-
-- **Files:** `pre_processing/processing_agent.py`, `pre_processing/tools.py`
-- **Problem:** The same input file is re-preprocessed from scratch on every run — slow for iterative queries on the same dataset.
-- **Fix:** Compute MD5/SHA hash of the input file. If a manifest with a matching hash already exists in `pre_processing/processed_data/`, skip preprocessing and load the cached result.
-
----
-
 ### [M2] Parallel graph generation + summarization
 
 - **Files:** `pipeline/graph.py`, `backend.py`

@@ -1,0 +1,37 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_F1_2026_Bahrain_Testing_Day_3.json",
+  "source_file": "data/f1/F1 2026 Bahrain Testing Day 3.csv",
+  "columns": [
+    "season",
+    "event_name",
+    "circuit",
+    "session_type",
+    "driver_number",
+    "driver_code",
+    "driver_name",
+    "team_name",
+    "lap_number",
+    "lap_time",
+    "lap_time_sec",
+    "timestamp_utc"
+  ],
+  "dtypes": {
+    "season": "int64",
+    "event_name": "str",
+    "circuit": "str",
+    "session_type": "str",
+    "driver_number": "int64",
+    "driver_code": "str",
+    "driver_name": "str",
+    "team_name": "str",
+    "lap_number": "int64",
+    "lap_time": "datetime64[us]",
+    "lap_time_sec": "float64",
+    "timestamp_utc": "datetime64[us]"
+  },
+  "row_count": 873,
+  "summary": "The dataset has been successfully pre-processed and saved.\n\n### Dataset Overview\n\nThe cleaned dataset contains Formula 1 testing data with 873 rows and 12 columns.\n\n*   **Columns**: `season`, `event_name`, `circuit`, `session_type`, `driver_number`, `driver_code`, `driver_name`, `team_name`, `lap_number`, `lap_time`, `lap_time_sec`, `timestamp_utc`.\n*   **Data Quality**: The dataset has been cleaned by removing entries with missing lap times and eliminating duplicate records. Data types have been standardized, with timestamps converted to ISO format and numerical columns set to appropriate types.\n*   **Notable Characteristics**: The data is filtered to include only representative lap times (between 85 and 120 seconds) to exclude outliers such as in-laps, out-laps, and laps completed under non-standard track conditions. This ensures the data is focused on performance analysis.",
+  "created_at": "2026-02-28T22:47:34.719785",
+  "status": "success",
+  "file_hash": "474a04dc76e709ff9d3e7f07658f1ba1"
+}
