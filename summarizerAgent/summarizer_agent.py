@@ -10,6 +10,24 @@ from agent_tools.llm_model import model
 load_dotenv()
 
 
+SUMMARIZER_SYSTEM = """You are a senior data analyst who writes precise, number-anchored markdown reports.
+
+RULES:
+1. Every section must cite at least one specific number — no section may contain only qualitative prose
+2. Use the exact unit label from the "unit" field when citing numbers
+3. Bold the single most important number in each section using **value**
+4. For rankings, cite the top 3 and the bottom 1 by name and value
+5. For timeseries, identify the highest and lowest points by label and value
+
+GOOD section example:
+### Top Recipients by Award Amount
+EXXON MOBIL CORPORATION received the largest award at **$724,234,597 USD**, followed by ELECTRIC BOAT CORPORATION at $609,128,749 USD. Together the top 2 recipients account for $1,333,363,346 USD — roughly 67% of total spend. At the bottom, P.M. BROGAN, INC. received only $11,537 USD.
+
+BAD section example (never write like this):
+### Top Recipients by Award Amount
+The analysis identified the highest funded recipients. Major corporations dominated the top of the list, while small businesses appeared at the bottom."""
+
+
 agent = create_agent(model, tools=[save_analysis_to_txt])
 
 
@@ -18,54 +36,23 @@ def summarize_results(user_question, analysis_output, outputFilePath):
     invoke_result = agent.invoke(
         {
             "messages": [
-                {
-                    "role": "user",
-                    "content": f"""
-    You are a professional data analyst.
+                {"role": "system", "content": SUMMARIZER_SYSTEM},
+                {"role": "user", "content": f"""The user asked: "{user_question}"
 
-    The user asked:
-    "{user_question}"
+Structured analysis results:
+---
+{analysis_output}
+---
 
-    The dataset analysis produced the following structured JSON results. Each key is an
-    output_label identifying one analysis result. Each value contains:
-    - "type": the kind of analysis (categorical, timeseries, comparison, scalar, etc.)
-    - "title": human-readable name for this result
-    - "description": what was computed
-    - "unit": measurement unit (e.g. USD, count, percent)
-    - "categories": list of labels (for categorical/timeseries/comparison)
-    - "values": list of numeric results (for categorical/timeseries)
-    - "series": list of {{name, data}} objects (for comparison)
+Write a markdown report with:
+- ## Executive Summary at the top (3–5 sentences, cite the 2 most important numbers)
+- One ### section per output_label using "title" as the heading
+- Each section must cite specific values from "values" or "series" with the correct "unit"
+- ## Additional Insights section at the end
 
-    Structured analysis results:
-    ---
-    {analysis_output}
-    ---
-
-    Your task:
-
-    1. Write a clear, well-structured markdown report explaining the results.
-    2. For each output_label in the JSON, write a dedicated section using "title" as the
-       ### heading. Reference the actual numeric values from "values" or "series" in your prose —
-       do not write vague generalities. Use "unit" to label measurements correctly.
-    3. Also include:
-    - A concise executive summary (## heading) at the top
-    - Additional insights, notable trends, anomalies, or patterns
-    4. Use proper markdown formatting with headings (##, ###), bullet points, and **emphasis**.
-    5. The entire output must be valid markdown.
-
-    File Saving Requirements:
-    - Save the markdown report to this file path: {outputFilePath}
-    - If {outputFilePath} is empty, choose a logical filename such as:
-    report_output.md
-    - Do NOT describe the saving process.
-    - Do NOT output anything outside the markdown report.
-    - The exact markdown content written to the file must be returned as your final output.
-    - The returned content must match the file content exactly.
-
-    Do not include explanations about what you are doing.
-    Only return the markdown report.
-    """
-                }
+Save the report using save_analysis_to_txt to: {outputFilePath}
+Return the exact markdown content as your final message.
+Do not describe what you are doing."""}
             ]
         }
     )

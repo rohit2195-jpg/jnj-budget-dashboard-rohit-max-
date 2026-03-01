@@ -72,32 +72,82 @@ def generate_analysis_code(user_question, data_path):
         print(f'Error reading data file: {e}')
         return 
 
-    prompt = f"""
-    You are a data analyst. Your task is to write Python code to answer a user's question about a dataset.
-    The dataset is located at: {data_path}
-    The data is in JSON format and its columns are: {df_header}
-    First five rows in the data: {df_first_rows}
+    prompt = f"""You are a Python data analyst. Write a single function that executes ALL of the analysis steps listed below and emits structured JSON.
 
-    User's question: "{user_question}"
+DATASET
+- Path: {data_path}
+- Format: JSON (load with pd.read_json)
+- Columns: {df_header}
+- First 5 rows:
+{df_first_rows}
 
-    Based on the user's question, please generate a Python script that uses the pandas library to perform the analysis.
-    The script should:
-    1. Load the JSON data from the specified path.
-    2. Perform the analysis required to answer the user's question.
-    3. Print the results of the analysis to the console.
+USER QUESTION: "{user_question}"
 
-    Generate ONLY this function:
+REQUIRED FUNCTION SIGNATURE:
+def analyze_spending_data(file_path):
 
-    def analyze_spending_data(file_path):
+OUTPUT SCHEMA — build a dict called `results`, keyed by output_label strings.
+Each value must be one of these typed structures:
 
-    The function must:
-    - Load JSON from file_path
-    - Perform analysis
-    - Print insights
-    
+  categorical / ranking:
+    {{"type": "categorical", "title": "...", "description": "...", "unit": "USD",
+      "categories": ["A", "B"], "values": [1000.0, 500.0]}}
 
-    Your code should be executable and self-contained. Do not include any markdown formatting.
-    """
+  timeseries:
+    {{"type": "timeseries", "title": "...", "description": "...", "unit": "count",
+      "categories": ["2022", "2023", "2024"], "values": [10, 15, 12]}}
+
+  comparison (multiple series):
+    {{"type": "comparison", "title": "...", "description": "...", "unit": "USD",
+      "categories": ["Q1", "Q2"],
+      "series": [{{"name": "GroupA", "data": [100.0, 200.0]}}, {{"name": "GroupB", "data": [80.0, 160.0]}}]}}
+
+  scalar:
+    {{"type": "scalar", "title": "...", "description": "...", "unit": "USD", "value": 1234567.89}}
+
+  scatter:
+    {{"type": "scatter", "title": "...", "description": "...", "unit": "USD",
+      "data": [{{"x": 1.0, "y": 2.0}}, {{"x": 3.0, "y": 4.0}}]}}
+
+RULES:
+- Convert ALL numpy types with .item() or float() before storing in results
+- For categorical/ranking: sort descending by value; keep top 14, collapse the rest into an "Other" entry
+- The LAST line of the function must be: import json; print(json.dumps(results))
+- Do NOT print anything else inside the function
+- Do NOT use markdown fences in your output
+
+EXAMPLE (dataset with columns ["Recipient Name", "Award Amount", "Start Date"]):
+
+def analyze_spending_data(file_path):
+    import pandas as pd
+    import json
+
+    df = pd.read_json(file_path)
+
+    top = df.groupby("Recipient Name")["Award Amount"].sum().sort_values(ascending=False).head(14)
+    others = df.groupby("Recipient Name")["Award Amount"].sum().sort_values(ascending=False).iloc[14:].sum()
+    cats = top.index.tolist() + (["Other"] if others > 0 else [])
+    vals = [float(v) for v in top.values] + ([float(others)] if others > 0 else [])
+
+    results = {{
+        "Top Recipients by Award Amount": {{
+            "type": "ranking",
+            "title": "Top Recipients by Award Amount",
+            "description": "Sum of Award Amount per recipient, top 14 plus Other",
+            "unit": "USD",
+            "categories": cats,
+            "values": vals
+        }},
+        "Total Awarded": {{
+            "type": "scalar",
+            "title": "Total Awarded",
+            "description": "Sum of all award amounts in the dataset",
+            "unit": "USD",
+            "value": float(df["Award Amount"].sum())
+        }}
+    }}
+    import json; print(json.dumps(results))
+"""
 
     try:
         response = model.invoke(prompt)

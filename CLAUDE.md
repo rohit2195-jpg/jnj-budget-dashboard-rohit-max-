@@ -6,9 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Backend
 ```bash
-python backend.py          # Start Flask API on http://localhost:5001
-python main.py             # Run full pipeline via CLI (no API)
-pip install -r requirements.txt
+source .venv/bin/activate
+.venv/bin/python backend.py   # Start Flask API on http://localhost:5001
+.venv/bin/python main.py      # Run full pipeline via CLI (no API)
+.venv/bin/pip install -r requirements.txt
 ```
 
 ### Frontend
@@ -26,15 +27,16 @@ Run these after every edit to confirm nothing is broken before proceeding.
 
 ### Backend (Python syntax + import check)
 ```bash
+# Always use the venv Python — it has all dependencies installed
 # Check syntax on any modified file
-python -m py_compile backend.py
-python -m py_compile pipeline/graph.py
-python -m py_compile agent_tools/agent.py
+.venv/bin/python -m py_compile backend.py
+.venv/bin/python -m py_compile pipeline/graph.py
+.venv/bin/python -m py_compile agent_tools/agent.py
 # etc. — replace with whichever file was changed
 
 # Verify imports resolve (catches missing deps, bad module references)
-python -c "import backend"
-python -c "from pipeline.graph import build_graph"
+.venv/bin/python -c "import backend"
+.venv/bin/python -c "from pipeline.graph import build_graph"
 ```
 
 ### Frontend (full compile)
@@ -43,7 +45,7 @@ cd frontend && npm run build    # Compiles all JSX/JS; exits non-zero on any err
 cd frontend && npm run lint     # Catches lint/style issues
 ```
 
-> `python backend.py` and `npm run dev` are long-running servers — use the commands above for quick pass/fail feedback after edits. Only start the servers when you need to manually test end-to-end behavior.
+> `.venv/bin/python backend.py` and `npm run dev` are long-running servers — use the commands above for quick pass/fail feedback after edits. Only start the servers when you need to manually test end-to-end behavior.
 
 ## Architecture
 

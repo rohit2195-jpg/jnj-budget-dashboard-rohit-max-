@@ -55,6 +55,18 @@ The generated code must define a function named 'analyze_spending_data(file_path
    If the data has more than 15 categories, sum the remaining values into a single final
    entry labelled "Other".
 
+WHAT WRONG OUTPUT LOOKS LIKE — do not do this:
+  BAD: "type": "bar"           → "bar" is a chart type; use "categorical" or "ranking"
+  BAD: results["result1"] = …  → key must match output_label exactly
+  BAD: "values": [np.int64(x)] → convert all numpy types: float(x) or x.item()
+  BAD: "type": "comparison", "values": [...]  → comparison needs "series": [{name, data}]
+
+BEFORE writing each results entry, ask:
+  1. Is this one number? → scalar
+  2. Is this a list paired with labels? → categorical, ranking, or timeseries
+  3. Is this multiple named series? → comparison
+  4. Is this x/y point pairs? → scatter
+
 Only call tools to run code. Do not output commentary.
 """
                 },

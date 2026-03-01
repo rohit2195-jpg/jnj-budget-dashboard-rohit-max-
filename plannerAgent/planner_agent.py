@@ -1,5 +1,27 @@
 import json
+from langchain_core.messages import SystemMessage, HumanMessage
 from agent_tools.llm_model import model
+
+
+PLANNER_SYSTEM = """You are a precision data analysis planner. Your sole output is a JSON object containing a numbered list of concrete, executable pandas analysis steps.
+
+NEVER write vague steps like these:
+  BAD: "Analyze the data to find patterns"
+  BAD: "Look at spending over time"
+  BAD: "Examine recipient information"
+
+ALWAYS write steps that name exact columns and operations:
+  GOOD: "Group by 'Recipient Name', sum 'Award Amount', sort descending, take top 15"
+  GOOD: "Parse 'Start Date' to datetime, resample by year ('Y'), sum 'Award Amount', return as timeseries"
+  GOOD: "For each unique 'team_name', compute mean of 'lap_time_sec'; rank ascending"
+
+OUTPUT FORMAT — return only this JSON, no other text:
+{
+    "analyses": [
+        {"id": 1, "description": "<concrete step>", "output_label": "<short title>"},
+        ...
+    ]
+}"""
 
 
 def create_analysis_plan(user_question: str, manifest: dict) -> dict:
@@ -20,12 +42,7 @@ def create_analysis_plan(user_question: str, manifest: dict) -> dict:
     row_count = manifest.get("row_count", "unknown")
     summary = manifest.get("summary", "")
 
-    prompt = f"""You are an expert data analysis planner.
-
-Your job is to break down a user's question into a precise, ordered checklist of specific pandas analysis steps.
-Each step must reference the actual column names from the dataset schema below.
-
-User question: "{user_question}"
+    user_msg = f"""User question: "{user_question}"
 
 Dataset schema:
 - Columns: {columns}
@@ -33,32 +50,16 @@ Dataset schema:
 - Row count: {row_count}
 - Dataset summary: {summary}
 
-Generate a JSON object with this exact structure:
-{{
-    "analyses": [
-        {{
-            "id": 1,
-            "description": "exact pandas operation using real column names from the schema",
-            "output_label": "short label for this result (used in graph titles and report headings)"
-        }}
-    ]
-}}
-
+Generate 3 to 6 analysis steps that together fully answer the user question.
 Rules:
-- Each step must be concrete and specific — never vague like "analyze the data"
-- Use the actual column names listed above
-- Generate 3 to 6 steps that together fully answer the user question
-- Start with the most direct answer to the question, then add supporting context
-- If date/time columns are present, include at least one trend or time-series step
-- If category + numeric columns are present, include at least one ranking or aggregation step
-- Steps may reference results from previous steps (e.g. "using the top 10 from step 1...")
-- If a step aggregates across many categories (e.g. by sub-agency, by vendor, by region),
-  limit it to the top 15 most significant items by value. Phrase the description as
-  "top 15 X by Y" so the analyst knows to truncate.
-- Output ONLY the JSON object. No markdown fences, no explanation, no extra text.
-"""
+- Use only column names listed above
+- Start with the most direct answer, then add supporting context
+- If date/time columns exist, include at least one time-series step
+- If category + numeric columns exist, include at least one ranking/aggregation step
+- Limit any step aggregating many categories to "top 15 X by Y"
+- Output ONLY the JSON object. No markdown fences, no explanation."""
 
-    response = model.invoke(prompt)
+    response = model.invoke([SystemMessage(content=PLANNER_SYSTEM), HumanMessage(content=user_msg)])
     # Handle both AIMessage.content and raw .text depending on LangChain version
     raw = response.content if hasattr(response, "content") else response.text
     if isinstance(raw, list):

@@ -57,13 +57,14 @@ Each result has:
 - For comparison: "categories" (list of labels) and "series" (list of {name, data} objects)
 - For scatter: "data" (list of {x, y} objects)
 
-Chart type mapping — choose the tool that best fits the "type" field:
-- categorical → bar chart (or pie chart if ≤6 categories)
-- ranking → horizontal bar chart
-- timeseries → line or area chart
-- comparison → stacked bar chart
-- scalar → SKIP (do not create a chart for scalar types)
-- scatter → scatter chart
+MANDATORY CHART TYPE MAPPING (no exceptions):
+- type == "categorical"  AND ≤ 6 categories  → add_pie_chart  (param: "labels", not "categories")
+- type == "categorical"  AND > 6 categories  → add_bar_chart
+- type == "ranking"                           → add_horizontal_bar_chart (NEVER add_bar_chart)
+- type == "timeseries"                        → add_line_chart or add_area_chart
+- type == "comparison"                        → add_stacked_bar_chart (pass "series" param directly)
+- type == "scatter"                           → add_scatter_chart
+- type == "scalar"                            → SKIP — call no tool
 
 Rules:
 - Build ONE chart per output_label (skip scalar types)
@@ -76,15 +77,27 @@ Rules:
     agent.invoke({
         "messages": [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"""
+            {"role": "user", "content": f"""EXAMPLE — given this input:
+{{
+  "Top Recipients": {{"type": "ranking", "title": "Top Recipients", "unit": "USD",
+    "categories": ["Corp A", "Corp B", "Other"], "values": [724234597.25, 609128749.14, 45000000.0]}},
+  "Award Trend": {{"type": "timeseries", "title": "Awards by Year", "unit": "USD",
+    "categories": ["2020", "2021", "2022"], "values": [1200000.0, 1450000.0, 1600000.0]}},
+  "Total Awarded": {{"type": "scalar", "title": "Total Awarded", "unit": "USD", "value": 1983363346.39}}
+}}
+
+Correct tool calls:
+1. add_horizontal_bar_chart(chart_id="Top Recipients", title="Top Recipients", ...)
+2. add_line_chart(chart_id="Award Trend", title="Awards by Year", ...)
+3. (skip "Total Awarded" — type is scalar)
+
+---
 User Question: {user_question}
 
-Analysis Results (structured JSON — one entry per output_label):
+Analysis Results:
 {analysis_output}
 
-For each output_label in the JSON above, call the appropriate chart tool.
-Skip any entries with type "scalar".
-"""}
+For each output_label, call the appropriate chart tool. Skip scalar types."""}
         ]
     })
 

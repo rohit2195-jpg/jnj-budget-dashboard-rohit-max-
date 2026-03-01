@@ -62,27 +62,40 @@ def generate_analysis_code(data_path: str) -> str:
         print(f'Error reading data file: {e}')
         return
 
-    prompt = f"""
-    You are a data pre-processor.
-    The dataset is located at: {data_path}
-    The data columns are: {df_header}
-    First five rows: {df_first_rows}
+    prompt = f"""You are a Python data preprocessing engineer. Output only executable Python code — no markdown, no explanation.
 
-    Please pre-process the data by cleaning, transforming, and organizing raw data into a usable format for future analysis and machine learning.
-    Hardcode both the input and output paths in your code.
+TASK: Write a function named `process_data(file_path)` that cleans the dataset and saves it as JSON.
 
-    Generate a Python script that uses pandas and:
-    1. Loads the data from '{data_path}'
-       - Use pd.read_csv if the path ends with .csv, otherwise use pd.read_json
-    2. Cleans and pre-processes the data (handle nulls, fix types, rename columns if needed)
-    3. Saves the cleaned dataset as JSON to EXACTLY this path: '{output_path}'
-       - Include: os.makedirs('pre_processing/processed_data', exist_ok=True) before saving
-    4. Prints a brief summary of the cleaned dataset (shape, columns, sample rows)
+DATASET:
+- Input path: {data_path}
+- Columns: {df_header}
+- First 5 rows:
+{df_first_rows}
 
-    The function must be named 'process_data' and accept a single argument: file_path (the input data path).
-    The output path must be hardcoded inside the function as: '{output_path}'
-    Your code should be executable and self-contained. Do not include any markdown formatting.
-    """
+REQUIRED TEMPLATE (fill in only the cleaning steps section):
+
+def process_data(file_path):
+    import pandas as pd
+    import os
+
+    if file_path.endswith('.csv'):
+        df = pd.read_csv(file_path)
+    else:
+        df = pd.read_json(file_path)
+
+    # --- CLEANING STEPS ---
+    # 1. Drop duplicate rows
+    # 2. Handle nulls (drop or fill based on column semantics)
+    # 3. Fix dtypes (parse date strings, coerce numerics)
+    # IMPORTANT: Do NOT rename columns — downstream code uses the original names: {df_header}
+
+    os.makedirs('pre_processing/processed_data', exist_ok=True)
+    df.to_json('{output_path}', orient='records', indent=2)
+
+    print(f"Cleaned: {{df.shape[0]}} rows x {{df.shape[1]}} columns")
+    print(f"Columns: {{df.columns.tolist()}}")
+
+Output ONLY the complete function. No imports outside the function body. No markdown fences."""
 
     try:
         response = model.invoke(prompt)

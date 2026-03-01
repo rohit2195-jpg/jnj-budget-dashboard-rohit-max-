@@ -62,11 +62,12 @@ Reliability improvements, developer experience, and output quality.
 
 ---
 
-### [M5] Prompts reference actual column names from manifest
+### [M5] Prompts reference actual column names from manifest *(partially done)*
 
 - **Files:** `plannerAgent/planner_agent.py`, `agent_tools/analyzer.py`
 - **Problem:** Both agents receive the manifest but the prompts don't explicitly require generated code to use exact column names. LLMs sometimes invent column names that don't exist.
-- **Fix:** Extract column names from the manifest and inject a `Columns available: [...]` list into the system prompt. Instruct the model that only these exact names may be used in generated code.
+- **Done:** All agent prompts now include the column list, BAD/GOOD contrast examples with real column names, and few-shot code examples. `planner_agent.py` uses a system/user message split with explicit `"Use only column names listed above"` instruction.
+- **Remaining:** Add post-parse validation that checks every step's description references at least one known column name; if not, retry the LLM call once with explicit feedback.
 
 ---
 
