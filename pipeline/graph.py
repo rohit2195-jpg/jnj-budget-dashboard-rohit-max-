@@ -10,6 +10,7 @@ from pipeline.state import PipelineState, serialize_analysis_output
 from pre_processing.processing_agent import callPreProcessAgent
 from plannerAgent.planner_agent import create_analysis_plan
 from agent_tools.agent import callAgent
+from forecastAgent.forecast_agent import create_forecast
 from graphAgent.graphAgent import create_graph
 from summarizerAgent.summarizer_agent import summarize_results
 
@@ -104,13 +105,26 @@ def retry_bump_node(state: PipelineState) -> dict:
     }
 
 
+def forecast_node(state: PipelineState) -> dict:
+    """
+    Run create_forecast.  Failure is non-fatal — pipeline continues with empty forecasts.
+    """
+    try:
+        serialized = serialize_analysis_output(state.get("analysis_output"))
+        forecast_output = create_forecast(state["question"], serialized)
+        return {"forecast_output": forecast_output}
+    except Exception as exc:
+        return {"forecast_output": {"forecasts": []}, "error": f"Forecast exception: {exc}"}
+
+
 def graph_gen_node(state: PipelineState) -> dict:
     """
     Run create_graph.  Failure is non-fatal — summarize still runs.
     """
     try:
         serialized = serialize_analysis_output(state.get("analysis_output"))
-        graph_data = create_graph(state["question"], serialized)
+        forecast_output = state.get("forecast_output")
+        graph_data = create_graph(state["question"], serialized, forecast_output)
         return {"graph_data": graph_data}
     except Exception as exc:
         return {"graph_data": {"charts": []}, "error": f"Graph generation exception: {exc}"}
@@ -122,7 +136,8 @@ def summarize_node(state: PipelineState) -> dict:
     """
     try:
         serialized = serialize_analysis_output(state.get("analysis_output"))
-        summary = summarize_results(state["question"], serialized, "")
+        forecast_output = state.get("forecast_output")
+        summary = summarize_results(state["question"], serialized, "", forecast_output)
         return {"summary": str(summary)}
     except Exception as exc:
         return {"error": f"Summarization exception: {exc}"}
@@ -156,7 +171,7 @@ def after_human_review(state: PipelineState) -> str:
 
 def after_analyze(state: PipelineState) -> str:
     if not state.get("error"):
-        return "graph_gen"
+        return "forecast"
     # Route back to preprocess for retry (up to MAX_RETRIES)
     if state.get("retry_count", 0) < MAX_RETRIES:
         return "retry_bump"
@@ -175,6 +190,7 @@ def build_pipeline():
     builder.add_node("human_review",  human_review_node)
     builder.add_node("analyze",       analyze_node)
     builder.add_node("retry_bump",    retry_bump_node)
+    builder.add_node("forecast",      forecast_node)
     builder.add_node("graph_gen",     graph_gen_node)
     builder.add_node("summarize",     summarize_node)
 
@@ -194,10 +210,11 @@ def build_pipeline():
     )
     builder.add_conditional_edges(
         "analyze", after_analyze,
-        {"graph_gen": "graph_gen", "retry_bump": "retry_bump", END: END},
+        {"forecast": "forecast", "retry_bump": "retry_bump", END: END},
     )
 
     builder.add_edge("retry_bump", "preprocess")
+    builder.add_edge("forecast",   "graph_gen")
     builder.add_edge("graph_gen",  "summarize")
     builder.add_edge("summarize",  END)
 

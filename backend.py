@@ -30,7 +30,7 @@ def start_analysis():
             return jsonify({"error": "No JSON payload provided"}), 400
 
         user_question = data.get('question')
-        data_path = data.get('filepath', 'data/f1/F1 2026 Bahrain Testing Day 3.csv')
+        data_path = data.get('filepath', 'data/US Spending Data/spending_data.json')
 
         if not user_question:
             return jsonify({"error": "Missing 'question' in request body"}), 400
@@ -136,10 +136,11 @@ def resume_analysis():
             return jsonify({"status": "error", "error": final_values["error"]}), 500
 
         return jsonify({
-            "status":  "complete",
-            "success": True,
-            "summary": final_values.get("summary", ""),
-            "graphs":  final_values.get("graph_data", {"charts": []}),
+            "status":          "complete",
+            "success":         True,
+            "summary":         final_values.get("summary", ""),
+            "graphs":          final_values.get("graph_data", {"charts": []}),
+            "forecast_output": final_values.get("forecast_output", {"forecasts": []}),
         }), 200
 
     except Exception as exc:

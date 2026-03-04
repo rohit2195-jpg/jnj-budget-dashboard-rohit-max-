@@ -13,6 +13,7 @@ class PipelineState(TypedDict, total=False):
     manifest:        Optional[dict]                 # Output of callPreProcessAgent
     plan:            Optional[dict]                 # Output of create_analysis_plan {"analyses": [...]}
     analysis_output: Optional[Union[str, dict]]     # Structured JSON dict or raw stdout fallback
+    forecast_output: Optional[dict]                 # Output of create_forecast {"forecasts": [...]}
     graph_data:      Optional[dict]                 # Output of create_graph {"charts": [...]}
     summary:         Optional[str]                  # Markdown report from summarize_results
 

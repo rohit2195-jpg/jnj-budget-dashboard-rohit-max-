@@ -561,3 +561,109 @@ Best for: Revenue vs growth rate, volume vs percentage, dual-axis insights.
         }
     })
     return "Mixed chart added."
+
+
+@tool
+def add_forecast_chart(
+    chart_id: str,
+    title: str,
+    historical_categories: List[str],
+    historical_values: List[float],
+    projected_categories: List[str],
+    projected_values: List[float],
+    lower_bound: List[float],
+    upper_bound: List[float],
+    unit: str,
+):
+    """
+Create a forecast chart combining historical data (solid line) with projected values
+(dashed line) and a shaded 95% confidence band.
+
+Use this for EVERY entry with type == "forecast" in the forecast_output data.
+
+Parameters:
+- chart_id: Unique identifier (use forecast_id)
+- title: Chart title
+- historical_categories: Labels for historical data points (e.g. ["2020","2021"])
+- historical_values: Numeric values for historical data
+- projected_categories: Labels for projected data points (e.g. ["2023","2024"])
+- projected_values: Projected numeric values
+- lower_bound: Lower 95% confidence bound for each projected point
+- upper_bound: Upper 95% confidence bound for each projected point
+- unit: Measurement unit (e.g. "USD", "count")
+
+Best for: Time-series forecasting, trend projection, budget planning.
+"""
+    all_cats = list(historical_categories) + list(projected_categories)
+    n_hist = len(historical_categories)
+
+    # Historical series: real values, then null for projected range
+    hist_data = list(historical_values) + [None] * len(projected_categories)
+    # Projected series: null for historical range, then projected values
+    proj_data = [None] * n_hist + list(projected_values)
+    lower_data = [None] * n_hist + list(lower_bound)
+    upper_data = [None] * n_hist + list(upper_bound)
+
+    # Boundary annotation: vertical line between last historical and first projected
+    boundary_x = historical_categories[-1] if historical_categories else None
+
+    graph_registry.append({
+        "id": chart_id,
+        "title": title,
+        "type": "line",
+        "series": [
+            {"name": "Historical", "data": hist_data},
+            {"name": "Projected", "data": proj_data},
+            {"name": "Upper Bound", "data": upper_data},
+            {"name": "Lower Bound", "data": lower_data},
+        ],
+        "options": {
+            "chart": {
+                "toolbar": {"show": False},
+            },
+            "colors": [
+                COLOR_PALETTE[0],   # Historical — indigo solid
+                COLOR_PALETTE[2],   # Projected — amber dashed
+                COLOR_PALETTE[4],   # Upper bound — blue faint
+                COLOR_PALETTE[4],   # Lower bound — blue faint
+            ],
+            "stroke": {
+                "width": [3, 3, 1, 1],
+                "dashArray": [0, 6, 0, 0],
+                "curve": "smooth",
+            },
+            "fill": {
+                "type": ["solid", "solid", "solid", "solid"],
+                "opacity": [1, 1, 0.15, 0.15],
+            },
+            "markers": {
+                "size": [4, 4, 0, 0],
+            },
+            "xaxis": {
+                "categories": all_cats,
+            },
+            "yaxis": {
+                "title": {"text": unit},
+            },
+            "annotations": {
+                "xaxis": [
+                    {
+                        "x": boundary_x,
+                        "borderColor": "#94A3B8",
+                        "borderWidth": 2,
+                        "strokeDashArray": 4,
+                        "label": {
+                            "text": "Forecast Start",
+                            "style": {"color": "#94A3B8", "fontSize": "11px"},
+                        },
+                    }
+                ] if boundary_x else []
+            },
+            "legend": {
+                "show": True,
+                "position": "top",
+            },
+            "tooltip": {"shared": True, "intersect": False},
+        },
+    })
+    return "Forecast chart added."

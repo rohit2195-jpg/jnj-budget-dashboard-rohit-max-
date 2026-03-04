@@ -15,6 +15,7 @@ from graphAgent.tools import (
     add_heatmap_chart,
     add_radar_chart,
     add_mixed_chart,
+    add_forecast_chart,
     reset_graph_registry,
     get_graph_registry
 )
@@ -35,11 +36,12 @@ agent = create_agent(
         add_heatmap_chart,
         add_radar_chart,
         add_mixed_chart,
+        add_forecast_chart,
     ]
 )
 
 
-def create_graph(user_question, analysis_output):
+def create_graph(user_question, analysis_output, forecast_output=None):
 
     reset_graph_registry()
 
@@ -48,7 +50,7 @@ You are a graph construction agent. Your input is a structured JSON object where
 output_label and each value describes one analysis result.
 
 Each result has:
-- "type": categorical | timeseries | ranking | comparison | scalar | scatter
+- "type": categorical | timeseries | ranking | comparison | scalar | scatter | forecast
 - "title": human-readable chart title
 - "description": what was computed
 - "unit": measurement unit (e.g. USD, count)
@@ -56,6 +58,7 @@ Each result has:
 - For timeseries: "categories" (list of date strings) and "values" (list of numbers)
 - For comparison: "categories" (list of labels) and "series" (list of {name, data} objects)
 - For scatter: "data" (list of {x, y} objects)
+- For forecast: "forecast_id", "historical" ({categories, values}), "projected" ({categories, values, lower_bound, upper_bound}), "unit"
 
 MANDATORY CHART TYPE MAPPING (no exceptions):
 - type == "categorical"  AND ≤ 6 categories  → add_pie_chart  (param: "labels", not "categories")
@@ -64,15 +67,27 @@ MANDATORY CHART TYPE MAPPING (no exceptions):
 - type == "timeseries"                        → add_line_chart or add_area_chart
 - type == "comparison"                        → add_stacked_bar_chart (pass "series" param directly)
 - type == "scatter"                           → add_scatter_chart
+- type == "forecast"                          → add_forecast_chart
 - type == "scalar"                            → SKIP — call no tool
 
 Rules:
 - Build ONE chart per output_label (skip scalar types)
-- Use the output_label as the chart_id parameter
+- Use the output_label or forecast_id as the chart_id parameter
 - Use "title" as the chart title
 - Map "categories"/"values"/"series"/"data" directly to tool parameters
+- For forecast entries: pass historical_categories, historical_values, projected_categories,
+  projected_values, lower_bound, upper_bound, unit from the forecast object
 - Do NOT output JSON, text, or markdown — ONLY call tools
 """
+
+    # Build user message — append forecast data if present
+    forecast_section = ""
+    if forecast_output and forecast_output.get("forecasts"):
+        import json as _json
+        forecast_section = f"""
+
+Forecast Results (process each with add_forecast_chart):
+{_json.dumps(forecast_output["forecasts"], indent=2)}"""
 
     agent.invoke({
         "messages": [
@@ -95,9 +110,10 @@ Correct tool calls:
 User Question: {user_question}
 
 Analysis Results:
-{analysis_output}
+{analysis_output}{forecast_section}
 
-For each output_label, call the appropriate chart tool. Skip scalar types."""}
+For each output_label, call the appropriate chart tool. Skip scalar types.
+For each forecast entry, call add_forecast_chart."""}
         ]
     })
 

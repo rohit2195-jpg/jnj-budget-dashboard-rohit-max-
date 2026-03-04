@@ -1,0 +1,29 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_spending_data.json",
+  "source_file": "data/US Spending Data/spending_data.json",
+  "columns": [
+    "internal_id",
+    "Award ID",
+    "Recipient Name",
+    "Start Date",
+    "End Date",
+    "Award Amount",
+    "action_date",
+    "generated_internal_id"
+  ],
+  "dtypes": {
+    "internal_id": "int64",
+    "Award ID": "str",
+    "Recipient Name": "str",
+    "Start Date": "str",
+    "End Date": "str",
+    "Award Amount": "float64",
+    "action_date": "float64",
+    "generated_internal_id": "str"
+  },
+  "row_count": 9659,
+  "summary": "The dataset has been successfully pre-processed.\n\nThe cleaned dataset contains 9,659 rows and 8 columns. The columns include various identifiers (`internal_id`, `Award ID`, `generated_internal_id`), recipient information (`Recipient Name`), key dates (`Start Date`, `End Date`, `action_date`), and the financial value of each entry (`Award Amount`). This structure suggests the data pertains to financial awards or contracts, detailing who received them, for what duration, and for how much.",
+  "created_at": "2026-03-02T16:11:15.311065",
+  "status": "success",
+  "file_hash": "172257b6f52972bf7722d13006cda285"
+}
