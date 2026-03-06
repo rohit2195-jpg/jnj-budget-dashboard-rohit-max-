@@ -49,30 +49,58 @@ cd frontend && npm run lint     # Catches lint/style issues
 
 ## Architecture
 
-This is a multi-agent AI data analysis platform. Users submit natural language questions about datasets; the system preprocesses data, generates a step-by-step analysis plan, pauses for human approval, then executes the plan to produce charts and a summary report.
+This is a multi-agent AI data analysis platform. Users submit natural language questions about datasets; the system preprocesses data, generates a step-by-step analysis plan, pauses for human approval, then executes the plan to produce charts, forecasts, and a summary report.
 
 ### Pipeline (LangGraph state machine — `pipeline/graph.py`)
 
 The core is a LangGraph graph with interrupt-based human-in-the-loop:
 
 ```
-preprocess → plan → human_review [INTERRUPT] → analyze → graph_gen → summarize → END
+preprocess → plan → human_review [INTERRUPT] → analyze → forecast → graph_gen → summarize → END
                                                     ↓ (on failure)
                                                retry_bump → preprocess (max 2 retries)
 ```
 
-- **`preprocess`** (`pre_processing/processing_agent.py`): Gemini generates pandas code to clean raw data; executes it; returns a schema manifest (columns, dtypes, row count).
+- **`preprocess`** (`pre_processing/processing_agent.py`): Gemini generates pandas code to clean raw data; executes it; returns a schema manifest (columns, dtypes, row count). Results are cached by file hash to avoid re-processing unchanged data.
 - **`plan`** (`plannerAgent/planner_agent.py`): Takes user question + manifest; generates a JSON checklist of 3–6 analysis steps referencing actual column names.
 - **`human_review`**: LangGraph interrupt — surfaces the checklist to the frontend for user approval before continuing.
 - **`analyze`** (`agent_tools/agent.py`): LangChain agent executes each checklist step by generating and running pandas code; captures stdout.
-- **`graph_gen`** (`graphAgent/graphAgent.py`): Takes raw analysis output; auto-selects from 10 chart types; generates ApexCharts-compatible configs.
+- **`forecast`** (`forecastAgent/forecast_agent.py`): Scans analysis output for `type == "timeseries"` entries; runs linear regression to project future values with 95% confidence intervals and R² metrics. Non-fatal — pipeline continues even if forecasting fails.
+- **`graph_gen`** (`graphAgent/graphAgent.py`): Takes raw analysis output; auto-selects from 11 chart types; generates ApexCharts-compatible configs.
 - **`summarize`** (`summarizerAgent/summarizer_agent.py`): Converts analysis output into a markdown report.
+
+### Forecasting (`forecastAgent/`)
+
+- **`forecast_agent.py`**: LangChain agent with a single `forecast_timeseries` tool. Skips non-timeseries data types (categorical, ranking, scalar, scatter).
+- **`tools.py`**: NumPy linear regression; outputs projected values, 95% confidence intervals (lower/upper bounds), R² goodness-of-fit, and trend direction (upward/downward/flat).
+- Forecast output is passed to both `graph_gen` (rendered as forecast charts) and `summarize`.
+
+Forecast output schema:
+```python
+{
+  "forecasts": [{
+    "type": "forecast",
+    "forecast_id": str,
+    "title": str,
+    "unit": str,
+    "historical": {"categories": [...], "values": [...]},
+    "projected": {"categories": [...], "values": [...], "lower_bound": [...], "upper_bound": [...]},
+    "r_squared": float,
+    "trend_direction": "upward" | "downward" | "flat",
+    "trend_summary": str   # e.g. "Growing ~$150,000/period; projected to reach $2.1M by 2026"
+  }]
+}
+```
+
+### Chart Types (`graphAgent/tools.py`)
+
+11 chart types available: `line`, `bar`, `pie`, `horizontal_bar`, `stacked_bar`, `area`, `scatter`, `heatmap`, `radar`, `mixed`, `forecast` (with confidence interval bands).
 
 ### Backend API (`backend.py`)
 
 Two endpoints drive the two-phase interaction:
 - `POST /api/analyze/start` — runs `preprocess → plan → human_review (pause)`; returns the generated checklist.
-- `POST /api/analyze/resume` — resumes from interrupt with user approval; runs `analyze → graph_gen → summarize`; returns charts + summary.
+- `POST /api/analyze/resume` — resumes from interrupt with user approval; runs `analyze → forecast → graph_gen → summarize`; returns `{ status, summary, graphs, forecast_output }`.
 
 State is persisted across the interrupt using LangGraph's `MemorySaver` checkpointer, keyed by `thread_id`.
 
@@ -80,7 +108,9 @@ State is persisted across the interrupt using LangGraph's `MemorySaver` checkpoi
 
 Single-page React app:
 1. User submits a question → calls `/api/analyze/start` → displays plan for approval.
-2. User approves → calls `/api/analyze/resume` → renders charts (ApexCharts) and markdown summary.
+2. User approves → calls `/api/analyze/resume` → renders charts (ApexCharts), a **Future Outlook** section with forecast cards, and a markdown summary.
+
+**Future Outlook section** displays per-forecast: trend direction badge (color-coded), projected value for the last period, 95% confidence interval, R² confidence score (green ≥0.9, orange ≥0.7, red <0.7), and trend summary text.
 
 Conversation history is stored in `localStorage` (up to 50 entries).
 
