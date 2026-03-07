@@ -300,7 +300,7 @@ function App() {
                             series={chart.series || []}
                             type={chart.type || 'bar'}
                             width="100%"
-                            height="450"
+                            height="320"
                           />
                         </div>
                       );
@@ -311,65 +311,67 @@ function App() {
                 </div>
               </section>
 
-              {data.forecast_output?.forecasts?.length > 0 && (
-                <section className="forecast-section">
-                  <div className="card-header">
-                    <TrendingUp className="card-icon" />
-                    <h2>Future Outlook</h2>
-                  </div>
-                  <div className="forecast-grid">
-                    {data.forecast_output.forecasts.map((fc, i) => {
-                      const TrendIcon = fc.trend_direction === 'upward' ? TrendingUp
-                        : fc.trend_direction === 'downward' ? TrendingDown : Minus;
-                      const trendColor = fc.trend_direction === 'upward' ? '#16a34a'
-                        : fc.trend_direction === 'downward' ? '#dc2626' : '#64748b';
-                      const lastProj = fc.projected?.values?.at(-1);
-                      const lastCat  = fc.projected?.categories?.at(-1);
-                      const lastLo   = fc.projected?.lower_bound?.at(-1);
-                      const lastHi   = fc.projected?.upper_bound?.at(-1);
-                      const fmt = (n) => n == null ? '–' : Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
-                      return (
-                        <div key={fc.forecast_id || i} className="forecast-card">
-                          <div className="forecast-card-header">
-                            <span className="forecast-title">{fc.title}</span>
-                            <span className="forecast-trend-badge" style={{ color: trendColor, borderColor: trendColor }}>
-                              <TrendIcon size={13} />
-                              {fc.trend_direction}
-                            </span>
-                          </div>
-                          <p className="forecast-summary">{fc.trend_summary}</p>
-                          <div className="forecast-stats">
-                            <div className="forecast-stat">
-                              <span className="forecast-stat-label">Projected ({lastCat})</span>
-                              <span className="forecast-stat-value">{fmt(lastProj)} <span className="forecast-unit">{fc.unit}</span></span>
-                            </div>
-                            <div className="forecast-stat">
-                              <span className="forecast-stat-label">95% CI</span>
-                              <span className="forecast-stat-value">{fmt(lastLo)} – {fmt(lastHi)}</span>
-                            </div>
-                            <div className="forecast-stat">
-                              <span className="forecast-stat-label">R²</span>
-                              <span className="forecast-stat-value" style={{ color: fc.r_squared >= 0.9 ? '#16a34a' : fc.r_squared >= 0.7 ? '#d97706' : '#dc2626' }}>
-                                {fc.r_squared?.toFixed(2)}
+              <div className="right-panel">
+                {data.forecast_output?.forecasts?.length > 0 && (
+                  <section className="forecast-section">
+                    <div className="card-header">
+                      <TrendingUp className="card-icon" />
+                      <h2>Future Outlook</h2>
+                    </div>
+                    <div className="forecast-grid">
+                      {data.forecast_output.forecasts.map((fc, i) => {
+                        const TrendIcon = fc.trend_direction === 'upward' ? TrendingUp
+                          : fc.trend_direction === 'downward' ? TrendingDown : Minus;
+                        const trendColor = fc.trend_direction === 'upward' ? '#16a34a'
+                          : fc.trend_direction === 'downward' ? '#dc2626' : '#64748b';
+                        const lastProj = fc.projected?.values?.at(-1);
+                        const lastCat  = fc.projected?.categories?.at(-1);
+                        const lastLo   = fc.projected?.lower_bound?.at(-1);
+                        const lastHi   = fc.projected?.upper_bound?.at(-1);
+                        const fmt = (n) => n == null ? '–' : Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+                        return (
+                          <div key={fc.forecast_id || i} className="forecast-card">
+                            <div className="forecast-card-header">
+                              <span className="forecast-title">{fc.title}</span>
+                              <span className="forecast-trend-badge" style={{ color: trendColor, borderColor: trendColor }}>
+                                <TrendIcon size={13} />
+                                {fc.trend_direction}
                               </span>
                             </div>
+                            <p className="forecast-summary">{fc.trend_summary}</p>
+                            <div className="forecast-stats">
+                              <div className="forecast-stat">
+                                <span className="forecast-stat-label">Projected ({lastCat})</span>
+                                <span className="forecast-stat-value">{fmt(lastProj)} <span className="forecast-unit">{fc.unit}</span></span>
+                              </div>
+                              <div className="forecast-stat">
+                                <span className="forecast-stat-label">95% CI</span>
+                                <span className="forecast-stat-value">{fmt(lastLo)} – {fmt(lastHi)}</span>
+                              </div>
+                              <div className="forecast-stat">
+                                <span className="forecast-stat-label">R²</span>
+                                <span className="forecast-stat-value" style={{ color: fc.r_squared >= 0.9 ? '#16a34a' : fc.r_squared >= 0.7 ? '#d97706' : '#dc2626' }}>
+                                  {fc.r_squared?.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
+                  </section>
+                )}
+
+                <section className="report-section">
+                  <div className="card-header">
+                    <FileText className="card-icon" />
+                    <h2>Analysis Report</h2>
+                  </div>
+                  <div className="report-content">
+                    <ReactMarkdown>{data.summary}</ReactMarkdown>
                   </div>
                 </section>
-              )}
-
-              <section className="report-section">
-                <div className="card-header">
-                  <FileText className="card-icon" />
-                  <h2>Analysis Report</h2>
-                </div>
-                <div className="report-content">
-                  <ReactMarkdown>{data.summary}</ReactMarkdown>
-                </div>
-              </section>
+              </div>
             </div>
           )}
 

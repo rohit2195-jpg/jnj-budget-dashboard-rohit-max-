@@ -235,19 +235,24 @@
   background-color: #fef2f2;
 }
 
-/* ── Main content (original, unchanged) ─────────────────────────────────────── */
+/* ── Main content ────────────────────────────────────────────────────────────── */
 .main-content {
   flex: 1;
-  padding: 2rem;
-  overflow-y: auto;
+  padding: 1rem 1.25rem;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
-/* ── Dashboard grid (charts on top, report below) ───────────────────────────── */
+/* ── Dashboard grid (2-column: charts left, right panel right) ──────────────── */
 .dashboard-grid {
   display: flex;
-  flex-direction: column;
-  gap: 2.5rem;
+  flex-direction: row;
+  gap: 1rem;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 @media (max-width: 1024px) {
@@ -256,6 +261,17 @@
   }
   .sidebar {
     display: none;
+  }
+  .dashboard-grid {
+    flex-direction: column;
+    overflow-y: auto;
+    gap: 1.5rem;
+  }
+  .right-panel {
+    width: 100%;
+  }
+  .charts-section {
+    overflow: visible;
   }
 }
 
@@ -288,9 +304,49 @@
   box-shadow: var(--shadow);
 }
 
+/* ── Charts section (left column) ───────────────────────────────────────────── */
+.charts-section {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Right panel (forecast + report stacked) ─────────────────────────────────── */
+.right-panel {
+  width: 480px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ── Forecast section (compact, natural height) ─────────────────────────────── */
+.forecast-section {
+  flex-shrink: 0;
+  padding: 1rem;
+}
+
+/* ── Report section (fills remaining right-panel height) ─────────────────────── */
+.report-section {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 .report-content {
-  line-height: 1.6;
+  line-height: 1.7;
   color: var(--text-main);
+  font-size: 0.9375rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-right: 4px;
 }
 
 .report-content h1, .report-content h2, .report-content h3 {
@@ -304,8 +360,13 @@
 
 .charts-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 2rem;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 0.5rem;
+  padding-right: 4px;
 }
 
 .chart-card {
