@@ -1,0 +1,41 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_Dataset.json",
+  "source_file": "data/census/Dataset.csv",
+  "columns": [
+    "Age",
+    "Workclass",
+    "fnlwgt",
+    "Education",
+    "Education-Num",
+    "Marital Status",
+    "Occupation",
+    "Relationship",
+    "Sex",
+    "Capital Gain",
+    "Capital Loss",
+    "Hours per week",
+    "Country",
+    "Income"
+  ],
+  "dtypes": {
+    "Age": "int64",
+    "Workclass": "str",
+    "fnlwgt": "int64",
+    "Education": "str",
+    "Education-Num": "int64",
+    "Marital Status": "str",
+    "Occupation": "str",
+    "Relationship": "str",
+    "Sex": "str",
+    "Capital Gain": "int64",
+    "Capital Loss": "int64",
+    "Hours per week": "int64",
+    "Country": "str",
+    "Income": "str"
+  },
+  "row_count": 30139,
+  "summary": "The dataset is now pre-processed and saved.\n\nHere is a brief overview of the cleaned dataset:\n\nThe dataset contains 30,139 records and 14 distinct columns. It is comprised of a mix of demographic and employment-related attributes, including:\n\n*   **Demographic Information**: Age, Education, Marital Status, Relationship, and Sex.\n*   **Employment Details**: Workclass, Occupation, and Hours per week.\n*   **Financial Data**: Capital Gain, Capital Loss, and a final weight (fnlwgt) column.\n*   **Target Variable**: An 'Income' column, which is likely the target for predictive analysis.\n\nThe data has been cleaned to handle missing values, duplicates have been removed, and data types have been standardized for consistency.",
+  "created_at": "2026-03-08T03:24:50.922469",
+  "status": "success",
+  "file_hash": "368ecef3e1bf0be208fd31573a2e5d8c"
+}

@@ -4,12 +4,13 @@ import ReactMarkdown from 'react-markdown';
 import {
   Search, LayoutDashboard, FileText, Loader2, AlertCircle,
   Plus, MessageSquare, Trash2, ClipboardList, CheckCircle, XCircle,
-  TrendingUp, TrendingDown, Minus,
+  TrendingUp, TrendingDown, Minus, Sun, Moon,
 } from 'lucide-react';
 import './App.css';
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 const STORAGE_KEY = 'budget-dashboard-conversations';
+const THEME_KEY   = 'budget-dashboard-theme';
 
 function loadConversations() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
@@ -29,6 +30,110 @@ function timeLabel(ts) {
   return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+// ── Sub-components ────────────────────────────────────────────────────────────
+
+function ForecastCard({ fc }) {
+  const TrendIcon = fc.trend_direction === 'upward' ? TrendingUp
+    : fc.trend_direction === 'downward' ? TrendingDown : Minus;
+
+  const trendStyle = fc.trend_direction === 'upward'
+    ? { color: 'var(--trend-up)',   borderColor: 'var(--trend-up)',   background: 'var(--trend-up-bg)' }
+    : fc.trend_direction === 'downward'
+    ? { color: 'var(--trend-down)', borderColor: 'var(--trend-down)', background: 'var(--trend-down-bg)' }
+    : { color: 'var(--trend-flat)', borderColor: 'var(--trend-flat)', background: 'var(--trend-flat-bg)' };
+
+  const borderLeft = `4px solid ${fc.trend_direction === 'upward' ? 'var(--trend-up)' : fc.trend_direction === 'downward' ? 'var(--trend-down)' : 'var(--trend-flat)'}`;
+
+  const lastProj = fc.projected?.values?.at(-1);
+  const lastCat  = fc.projected?.categories?.at(-1);
+  const lastLo   = fc.projected?.lower_bound?.at(-1);
+  const lastHi   = fc.projected?.upper_bound?.at(-1);
+  const fmt = (n) => n == null ? '–' : Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
+
+  const r2Class = fc.r_squared >= 0.9 ? 'r2-high' : fc.r_squared >= 0.7 ? 'r2-mid' : 'r2-low';
+
+  return (
+    <div className="forecast-card" style={{ borderLeft }}>
+      <div className="forecast-card-header">
+        <span className="forecast-title">{fc.title}</span>
+        <span className="forecast-trend-badge" style={trendStyle}>
+          <TrendIcon size={13} />
+          {fc.trend_direction}
+        </span>
+      </div>
+      <p className="forecast-summary">{fc.trend_summary}</p>
+      <div className="forecast-projected-value">
+        <span className="forecast-big-number">{fmt(lastProj)}</span>
+        {fc.unit && <span className="forecast-unit">{fc.unit}</span>}
+        {lastCat && <span className="forecast-unit">({lastCat})</span>}
+      </div>
+      <div className="forecast-stats">
+        <div className="forecast-stat">
+          <span className="forecast-stat-label">95% CI</span>
+          <span className="forecast-stat-value">{fmt(lastLo)} – {fmt(lastHi)}</span>
+        </div>
+        <div className="forecast-stat">
+          <span className="forecast-stat-label">R²</span>
+          <span className={`forecast-stat-value ${r2Class}`}>
+            {fc.r_squared?.toFixed(2)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PlanApprovalCard({ pendingPlan, onApprove, onReject }) {
+  return (
+    <div className="approval-card">
+      <div className="card-header">
+        <ClipboardList className="card-icon" />
+        <h2>Review Analysis Plan</h2>
+      </div>
+      <p className="approval-subtitle">
+        Approve the steps below to run the full analysis, or reject to revise your question.
+      </p>
+      <ol className="plan-steps">
+        {pendingPlan.analyses?.map(step => (
+          <li key={step.id} className="plan-step">
+            <span className="step-label">{step.output_label}</span>
+            <span className="step-desc">{step.description}</span>
+          </li>
+        ))}
+      </ol>
+      <div className="approval-actions">
+        <button className="btn-approve" onClick={onApprove}>
+          <CheckCircle size={15} /> Approve &amp; Run
+        </button>
+        <button className="btn-reject" onClick={onReject}>
+          <XCircle size={15} /> Reject
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function WelcomeState({ onSuggestionClick }) {
+  return (
+    <div className="welcome-state">
+      <LayoutDashboard size={64} className="welcome-icon" />
+      <h2>Ready to Explore Spending Data?</h2>
+      <p>Enter a question above to get a detailed report and visual dashboard.</p>
+      <div className="suggestions">
+        <button onClick={() => onSuggestionClick('Show me the top 5 departments by spending')}>
+          "Top 5 departments by spending"
+        </button>
+        <button onClick={() => onSuggestionClick('How much was spent on education in 2023?')}>
+          "Spending on education in 2023"
+        </button>
+        <button onClick={() => onSuggestionClick('Compare spending across different sub-agencies')}>
+          "Compare sub-agency spending"
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 function App() {
   const [question, setQuestion]           = useState('');
@@ -40,8 +145,16 @@ function App() {
   const [pendingPlan, setPendingPlan]     = useState(null);
   const [conversations, setConversations] = useState(loadConversations);
   const [activeConvId, setActiveConvId]   = useState(null);
+  const [theme, setTheme]                 = useState(() => localStorage.getItem(THEME_KEY) || 'light');
 
   useEffect(() => { saveConversations(conversations); }, [conversations]);
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem(THEME_KEY, theme);
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   const loading = appState === 'loading_start' || appState === 'loading_resume';
 
@@ -136,7 +249,7 @@ function App() {
   return (
     <div className="app-container">
 
-      {/* ── Header (unchanged from original) ───────────────────────────── */}
+      {/* ── Header ───────────────────────────────────────────────────────── */}
       <header className="header">
         <div className="logo-section">
           <LayoutDashboard className="logo-icon" />
@@ -157,9 +270,14 @@ function App() {
             {loading ? <Loader2 className="animate-spin" /> : 'Analyze'}
           </button>
         </form>
+        <div className="header-actions">
+          <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
+            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+        </div>
       </header>
 
-      {/* ── Body row: sidebar + main ────────────────────────────────────── */}
+      {/* ── Body row: sidebar + main ──────────────────────────────────────── */}
       <div className="body-row">
 
         {/* Sidebar */}
@@ -196,7 +314,7 @@ function App() {
           </div>
         </aside>
 
-        {/* ── Main content (original, unchanged structure) ─────────────── */}
+        {/* ── Main content ─────────────────────────────────────────────────── */}
         <main className="main-content">
 
           {/* Error */}
@@ -221,51 +339,16 @@ function App() {
 
           {/* Plan approval */}
           {appState === 'pending_approval' && pendingPlan && (
-            <div className="approval-card">
-              <div className="card-header">
-                <ClipboardList className="card-icon" />
-                <h2>Review Analysis Plan</h2>
-              </div>
-              <p className="approval-subtitle">
-                Approve the steps below to run the full analysis, or reject to revise your question.
-              </p>
-              <ol className="plan-steps">
-                {pendingPlan.analyses?.map(step => (
-                  <li key={step.id} className="plan-step">
-                    <span className="step-label">{step.output_label}</span>
-                    <span className="step-desc">{step.description}</span>
-                  </li>
-                ))}
-              </ol>
-              <div className="approval-actions">
-                <button className="btn-approve" onClick={handleApprove}>
-                  <CheckCircle size={15} /> Approve &amp; Run
-                </button>
-                <button className="btn-reject" onClick={handleReject}>
-                  <XCircle size={15} /> Reject
-                </button>
-              </div>
-            </div>
+            <PlanApprovalCard
+              pendingPlan={pendingPlan}
+              onApprove={handleApprove}
+              onReject={handleReject}
+            />
           )}
 
           {/* Welcome */}
           {appState === 'idle' && (
-            <div className="welcome-state">
-              <LayoutDashboard size={64} className="welcome-icon" />
-              <h2>Ready to Explore Spending Data?</h2>
-              <p>Enter a question above to get a detailed report and visual dashboard.</p>
-              <div className="suggestions">
-                <button onClick={() => setQuestion('Show me the top 5 departments by spending')}>
-                  "Top 5 departments by spending"
-                </button>
-                <button onClick={() => setQuestion('How much was spent on education in 2023?')}>
-                  "Spending on education in 2023"
-                </button>
-                <button onClick={() => setQuestion('Compare spending across different sub-agencies')}>
-                  "Compare sub-agency spending"
-                </button>
-              </div>
-            </div>
+            <WelcomeState onSuggestionClick={setQuestion} />
           )}
 
           {/* Dashboard (charts on top, report below) */}
@@ -279,28 +362,44 @@ function App() {
                 <div className="charts-grid">
                   {data.graphs?.charts?.length > 0 ? (
                     data.graphs.charts.map((chart, index) => {
-                      const safeOptions = JSON.parse(JSON.stringify(chart.options || {}));
-                      if (safeOptions?.xaxis?.labels?.formatter)  delete safeOptions.xaxis.labels.formatter;
-                      if (safeOptions?.tooltip?.y?.formatter)     delete safeOptions.tooltip.y.formatter;
+                      const isHorizontal = chart.options?.plotOptions?.bar?.horizontal === true;
+                      const catCount = chart.options?.xaxis?.categories?.length || 0;
+                      const chartHeight = isHorizontal
+                        ? Math.max(320, catCount * 38 + 60)
+                        : 320;
                       return (
                         <div key={chart.id || index} className="chart-card">
                           <h3>{chart.title || chart.options?.title?.text || `Chart ${index + 1}`}</h3>
                           <Chart
                             options={{
                               ...(chart.options || {}),
-                              xaxis: {
-                                ...(chart.options?.xaxis || {}),
-                                labels: { ...(chart.options?.xaxis?.labels || {}), formatter: undefined },
+                              theme: { mode: theme, palette: 'palette1' },
+                              chart: {
+                                ...(chart.options?.chart || {}),
+                                background: 'transparent',
+                                foreColor: theme === 'dark' ? '#94a3b8' : '#64748b',
+                              },
+                              grid: {
+                                ...(chart.options?.grid || {}),
+                                borderColor: theme === 'dark' ? '#334155' : '#e2e8f0',
                               },
                               tooltip: {
                                 ...(chart.options?.tooltip || {}),
-                                y: { ...(chart.options?.tooltip?.y || {}), formatter: undefined },
+                                theme,
+                                y: { formatter: undefined },
+                              },
+                              xaxis: {
+                                ...(chart.options?.xaxis || {}),
+                                labels: {
+                                  ...(chart.options?.xaxis?.labels || {}),
+                                  formatter: undefined,
+                                },
                               },
                             }}
                             series={chart.series || []}
                             type={chart.type || 'bar'}
                             width="100%"
-                            height="320"
+                            height={chartHeight}
                           />
                         </div>
                       );
@@ -319,45 +418,9 @@ function App() {
                       <h2>Future Outlook</h2>
                     </div>
                     <div className="forecast-grid">
-                      {data.forecast_output.forecasts.map((fc, i) => {
-                        const TrendIcon = fc.trend_direction === 'upward' ? TrendingUp
-                          : fc.trend_direction === 'downward' ? TrendingDown : Minus;
-                        const trendColor = fc.trend_direction === 'upward' ? '#16a34a'
-                          : fc.trend_direction === 'downward' ? '#dc2626' : '#64748b';
-                        const lastProj = fc.projected?.values?.at(-1);
-                        const lastCat  = fc.projected?.categories?.at(-1);
-                        const lastLo   = fc.projected?.lower_bound?.at(-1);
-                        const lastHi   = fc.projected?.upper_bound?.at(-1);
-                        const fmt = (n) => n == null ? '–' : Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
-                        return (
-                          <div key={fc.forecast_id || i} className="forecast-card">
-                            <div className="forecast-card-header">
-                              <span className="forecast-title">{fc.title}</span>
-                              <span className="forecast-trend-badge" style={{ color: trendColor, borderColor: trendColor }}>
-                                <TrendIcon size={13} />
-                                {fc.trend_direction}
-                              </span>
-                            </div>
-                            <p className="forecast-summary">{fc.trend_summary}</p>
-                            <div className="forecast-stats">
-                              <div className="forecast-stat">
-                                <span className="forecast-stat-label">Projected ({lastCat})</span>
-                                <span className="forecast-stat-value">{fmt(lastProj)} <span className="forecast-unit">{fc.unit}</span></span>
-                              </div>
-                              <div className="forecast-stat">
-                                <span className="forecast-stat-label">95% CI</span>
-                                <span className="forecast-stat-value">{fmt(lastLo)} – {fmt(lastHi)}</span>
-                              </div>
-                              <div className="forecast-stat">
-                                <span className="forecast-stat-label">R²</span>
-                                <span className="forecast-stat-value" style={{ color: fc.r_squared >= 0.9 ? '#16a34a' : fc.r_squared >= 0.7 ? '#d97706' : '#dc2626' }}>
-                                  {fc.r_squared?.toFixed(2)}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                      {data.forecast_output.forecasts.map((fc, i) => (
+                        <ForecastCard key={fc.forecast_id || i} fc={fc} />
+                      ))}
                     </div>
                   </section>
                 )}

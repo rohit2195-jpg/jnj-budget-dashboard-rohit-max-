@@ -30,7 +30,7 @@ def start_analysis():
             return jsonify({"error": "No JSON payload provided"}), 400
 
         user_question = data.get('question')
-        data_path = data.get('filepath', 'data/US Spending Data/spending_data.json')
+        data_path = data.get('filepath', 'data/census/Dataset.csv')
 
         if not user_question:
             return jsonify({"error": "Missing 'question' in request body"}), 400

@@ -127,18 +127,23 @@ Best for: Category comparison, rankings, top 10 lists.
             "plotOptions": {
                 "bar": {
                     "borderRadius": 6,
-                    "distributed": True
+                    "distributed": True,
+                    "columnWidth": "60%"
                 }
             },
             "dataLabels": {
                 "enabled": False
             },
+            "legend": {
+                "show": False
+            },
             "xaxis": {
                 "categories": categories,
                 "labels": {
-                    "rotate": -45,
+                    "rotate": -35,
                     "trim": True,
-                    "maxHeight": 80,
+                    "maxHeight": 60,
+                    "style": {"fontSize": "11px"}
                 }
             }
         }
@@ -230,20 +235,24 @@ Best for: Top 10 rankings, company comparisons, long names.
             "plotOptions": {
                 "bar": {
                     "horizontal": True,
-                    "borderRadius": 6,
-                    "distributed": True
+                    "borderRadius": 4,
+                    "distributed": True,
+                    "barHeight": "65%"
                 }
             },
             "dataLabels": {
                 "enabled": False
+            },
+            "legend": {
+                "show": False
             },
             "xaxis": {
                 "categories": categories
             },
             "yaxis": {
                 "labels": {
-                    "maxWidth": 150,
-                    "style": {"fontSize": "12px"}
+                    "maxWidth": 140,
+                    "style": {"fontSize": "11px"}
                 }
             }
         }
