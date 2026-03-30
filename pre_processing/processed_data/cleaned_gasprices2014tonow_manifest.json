@@ -1,0 +1,37 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_gasprices2014tonow.json",
+  "source_file": "data/gasprices2014tonow.csv",
+  "columns": [
+    "year",
+    "month",
+    "duoarea",
+    "area-name",
+    "product",
+    "product-name",
+    "process",
+    "process-name",
+    "series",
+    "series-description",
+    "value",
+    "units"
+  ],
+  "dtypes": {
+    "year": "int64",
+    "month": "int64",
+    "duoarea": "str",
+    "area-name": "str",
+    "product": "str",
+    "product-name": "str",
+    "process": "str",
+    "process-name": "str",
+    "series": "str",
+    "series-description": "str",
+    "value": "int64",
+    "units": "str"
+  },
+  "row_count": 37518,
+  "summary": "The dataset now contains 37,518 rows and 12 columns. The columns are: `year`, `month`, `duoarea`, `area-name`, `product`, `product-name`, `process`, `process-name`, `series`, `series-description`, `value`, and `units`. This structured dataset provides a comprehensive view of gas prices over time, with detailed categorical information for in-depth analysis.",
+  "created_at": "2026-03-08T03:43:53.851994",
+  "status": "success",
+  "file_hash": "120d1e80e50c8fb2a3a8cd22f0cefcfd"
+}

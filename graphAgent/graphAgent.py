@@ -23,22 +23,24 @@ from graphAgent.tools import (
 
 load_dotenv()
 
-agent = create_agent(
-    model,
-    tools=[
-        add_bar_chart,
-        add_line_chart,
-        add_pie_chart,
-        add_horizontal_bar_chart,
-        add_stacked_bar_chart,
-        add_area_chart,
-        add_scatter_chart,
-        add_heatmap_chart,
-        add_radar_chart,
-        add_mixed_chart,
-        add_forecast_chart,
-    ]
-)
+
+def _build_graph_agent():
+    return create_agent(
+        model,
+        tools=[
+            add_bar_chart,
+            add_line_chart,
+            add_pie_chart,
+            add_horizontal_bar_chart,
+            add_stacked_bar_chart,
+            add_area_chart,
+            add_scatter_chart,
+            add_heatmap_chart,
+            add_radar_chart,
+            add_mixed_chart,
+            add_forecast_chart,
+        ]
+    )
 
 
 def create_graph(user_question, analysis_output, forecast_output=None):
@@ -89,6 +91,7 @@ Rules:
 Forecast Results (process each with add_forecast_chart):
 {_json.dumps(forecast_output["forecasts"], indent=2)}"""
 
+    agent = _build_graph_agent()
     agent.invoke({
         "messages": [
             {"role": "system", "content": system_prompt},

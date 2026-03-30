@@ -13,7 +13,9 @@ from forecastAgent.tools import (
 
 load_dotenv()
 
-agent = create_agent(model, tools=[forecast_timeseries])
+
+def _build_forecast_agent():
+    return create_agent(model, tools=[forecast_timeseries])
 
 
 def _has_timeseries(analysis_output_str: str) -> bool:
@@ -61,6 +63,7 @@ def create_forecast(user_question: str, analysis_output_str: str) -> dict:
         return {"forecasts": []}
 
     try:
+        agent = _build_forecast_agent()
         agent.invoke({
             "messages": [
                 {"role": "system", "content": FORECAST_SYSTEM},

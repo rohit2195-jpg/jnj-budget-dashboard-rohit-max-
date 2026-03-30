@@ -4,7 +4,7 @@ import ReactMarkdown from 'react-markdown';
 import {
   Search, LayoutDashboard, FileText, Loader2, AlertCircle,
   Plus, MessageSquare, Trash2, ClipboardList, CheckCircle, XCircle,
-  TrendingUp, TrendingDown, Minus, Sun, Moon,
+  TrendingUp, TrendingDown, Minus, Sun, Moon, Upload, Database,
 } from 'lucide-react';
 import './App.css';
 
@@ -51,9 +51,16 @@ function ForecastCard({ fc }) {
   const fmt = (n) => n == null ? '–' : Number(n).toLocaleString(undefined, { maximumFractionDigits: 0 });
 
   const r2Class = fc.r_squared >= 0.9 ? 'r2-high' : fc.r_squared >= 0.7 ? 'r2-mid' : 'r2-low';
+  const r2Label = fc.r_squared >= 0.9 ? 'High confidence' : fc.r_squared >= 0.7 ? 'Moderate confidence' : 'Low confidence';
 
   return (
     <div className="forecast-card" style={{ borderLeft }}>
+      {fc.low_confidence_warning && (
+        <div className="forecast-warning-banner">
+          <AlertCircle size={13} />
+          <span>{fc.low_confidence_warning}</span>
+        </div>
+      )}
       <div className="forecast-card-header">
         <span className="forecast-title">{fc.title}</span>
         <span className="forecast-trend-badge" style={trendStyle}>
@@ -73,11 +80,17 @@ function ForecastCard({ fc }) {
           <span className="forecast-stat-value">{fmt(lastLo)} – {fmt(lastHi)}</span>
         </div>
         <div className="forecast-stat">
-          <span className="forecast-stat-label">R²</span>
+          <span className="forecast-stat-label">R² <span className="forecast-stat-subtitle">(model fit)</span></span>
           <span className={`forecast-stat-value ${r2Class}`}>
-            {fc.r_squared?.toFixed(2)}
+            {fc.r_squared?.toFixed(2)} <span className="r2-label">{r2Label}</span>
           </span>
         </div>
+        {fc.model_type && (
+          <div className="forecast-stat">
+            <span className="forecast-stat-label">Model</span>
+            <span className="forecast-stat-value forecast-model-type">{fc.model_type}</span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -146,6 +159,45 @@ function App() {
   const [conversations, setConversations] = useState(loadConversations);
   const [activeConvId, setActiveConvId]   = useState(null);
   const [theme, setTheme]                 = useState(() => localStorage.getItem(THEME_KEY) || 'light');
+  const [datasets, setDatasets]           = useState([]);
+  const [selectedDataset, setSelectedDataset] = useState('');
+  const [uploading, setUploading]         = useState(false);
+
+  const fetchDatasets = async () => {
+    try {
+      const res = await fetch('http://localhost:5001/api/datasets');
+      const json = await res.json();
+      setDatasets(json.datasets || []);
+      if (!selectedDataset && json.datasets?.length > 0) {
+        setSelectedDataset(json.datasets[0].path);
+      }
+    } catch { /* ignore — backend may not be running */ }
+  };
+
+  useEffect(() => { fetchDatasets(); }, []);
+
+  const handleUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('http://localhost:5001/api/upload', { method: 'POST', body: formData });
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); } catch { throw new Error('Upload failed — server returned an unexpected response'); }
+      if (!res.ok) throw new Error(json.error || 'Upload failed');
+      await fetchDatasets();
+      setSelectedDataset(json.path);
+    } catch (err) {
+      setError(err.message);
+      setAppState('error');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
 
   useEffect(() => { saveConversations(conversations); }, [conversations]);
 
@@ -188,7 +240,7 @@ function App() {
       const response = await fetch('http://localhost:5001/api/analyze/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, filepath: selectedDataset || undefined }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Failed to fetch data from the server');
@@ -270,6 +322,23 @@ function App() {
             {loading ? <Loader2 className="animate-spin" /> : 'Analyze'}
           </button>
         </form>
+        <div className="dataset-picker">
+          <Database size={16} className="dataset-icon" />
+          <select
+            value={selectedDataset}
+            onChange={(e) => setSelectedDataset(e.target.value)}
+            disabled={loading || appState === 'pending_approval'}
+          >
+            {datasets.length === 0 && <option value="">No datasets found</option>}
+            {datasets.map(ds => (
+              <option key={ds.path} value={ds.path}>{ds.name} ({(ds.size / 1024).toFixed(0)} KB)</option>
+            ))}
+          </select>
+          <label className="upload-btn" title="Upload CSV or JSON">
+            {uploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+            <input type="file" accept=".csv,.json" onChange={handleUpload} hidden disabled={uploading} />
+          </label>
+        </div>
         <div className="header-actions">
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}

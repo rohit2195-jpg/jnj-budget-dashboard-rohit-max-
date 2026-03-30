@@ -3,11 +3,81 @@ import uuid
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from langgraph.types import Command
+from werkzeug.utils import secure_filename
 
 from pipeline.graph import pipeline
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100 MB upload limit
 CORS(app)
+
+DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+ALLOWED_EXTENSIONS = {'.csv', '.json'}
+
+
+@app.errorhandler(413)
+def request_entity_too_large(_):
+    return jsonify({'error': 'File too large. Maximum size is 100 MB.'}), 413
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GET /api/datasets
+#
+# Lists available datasets (CSV/JSON) under the data/ directory.
+# Response: { "datasets": [{ "name": "...", "path": "...", "size": ... }, ...] }
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route('/api/datasets', methods=['GET'])
+def list_datasets():
+    datasets = []
+    for root, dirs, files in os.walk(DATA_DIR):
+        # Skip hidden directories
+        dirs[:] = [d for d in dirs if not d.startswith('.')]
+        for fname in files:
+            if fname.startswith('.'):
+                continue
+            ext = os.path.splitext(fname)[1].lower()
+            if ext not in ALLOWED_EXTENSIONS:
+                continue
+            abs_path = os.path.join(root, fname)
+            rel_path = os.path.relpath(abs_path, os.path.dirname(DATA_DIR))
+            display_name = os.path.relpath(abs_path, DATA_DIR)
+            datasets.append({
+                'name': display_name,
+                'path': rel_path,
+                'size': os.path.getsize(abs_path),
+            })
+    datasets.sort(key=lambda d: d['name'].lower())
+    return jsonify({'datasets': datasets}), 200
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POST /api/upload
+#
+# Upload a CSV or JSON file to the data/ directory.
+# Accepts multipart form data with a 'file' field.
+# Response: { "path": "data/filename.csv" }
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route('/api/upload', methods=['POST'])
+def upload_dataset():
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file provided'}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({'error': 'No file selected'}), 400
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return jsonify({'error': f'Invalid file type. Allowed: {", ".join(ALLOWED_EXTENSIONS)}'}), 400
+
+    filename = secure_filename(file.filename)
+    save_path = os.path.join(DATA_DIR, filename)
+    file.save(save_path)
+
+    rel_path = os.path.relpath(save_path, os.path.dirname(DATA_DIR))
+    return jsonify({'path': rel_path}), 200
 
 
 # ─────────────────────────────────────────────────────────────────────────────

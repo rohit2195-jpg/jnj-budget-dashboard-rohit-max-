@@ -1,7 +1,8 @@
+from contextvars import ContextVar
 from langchain.tools import tool
 from typing import List
 
-graph_registry = []
+graph_registry_var: ContextVar[list] = ContextVar("graph_registry", default=[])
 
 COLOR_PALETTE = [
     "#6366F1", "#22C55E", "#F59E0B", "#EF4444", "#3B82F6",
@@ -24,12 +25,17 @@ def _cap_series(categories, values, n=15):
     return top_cats, top_vals
 
 def reset_graph_registry():
-    global graph_registry
-    graph_registry = []
+    graph_registry_var.set([])
 
 
 def get_graph_registry():
-    return {"charts": graph_registry}
+    return {"charts": list(graph_registry_var.get())}
+
+
+def _append_chart(chart: dict):
+    charts = list(graph_registry_var.get())
+    charts.append(chart)
+    graph_registry_var.set(charts)
 
 @tool
 def add_line_chart(
@@ -58,7 +64,7 @@ Best for: Time series analysis, trend detection, forecasting signals.
 """
     categories = list(categories)[:50]
     values = list(values)[:50]
-    graph_registry.append({
+    _append_chart({
         "id": chart_id,
         "title": title,
         "type": "line",
@@ -111,7 +117,7 @@ Parameters:
 Best for: Category comparison, rankings, top 10 lists.
 """
     categories, values = _cap_series(categories, values, n=15)
-    graph_registry.append({
+    _append_chart({
         "id": chart_id,
         "title": title,
         "type": "bar",
@@ -175,7 +181,7 @@ Best for: Market share, budget allocation, distribution analysis.
 Avoid if too many categories.
 """
     labels, values = _cap_series(labels, values, n=6)
-    graph_registry.append({
+    _append_chart({
         "id": chart_id,
         "title": title,
         "type": "pie",
@@ -219,7 +225,7 @@ Parameters:
 Best for: Top 10 rankings, company comparisons, long names.
 """
     categories, values = _cap_series(categories, values, n=15)
-    graph_registry.append({
+    _append_chart({
         "id": chart_id,
         "title": title,
         "type": "bar",
@@ -290,7 +296,7 @@ Best for: Revenue breakdowns, budget segments, multi-group comparisons.
     if len(categories) > cap:
         categories = list(categories)[:cap]
         series = [{"name": s["name"], "data": list(s["data"])[:cap]} for s in series]
-    graph_registry.append({
+    _append_chart({
         "id": chart_id,
         "title": title,
         "type": "bar",
@@ -349,7 +355,7 @@ Best for: Growth trends, cumulative values, volume over time.
 """
     categories = list(categories)[:50]
     values = list(values)[:50]
-    graph_registry.append({
+    _append_chart({
         "id": chart_id,
         "title": title,
         "type": "area",
@@ -400,7 +406,7 @@ Parameters:
 
 Best for: Correlation analysis, regression exploration, anomaly detection.
 """
-    graph_registry.append({
+    _append_chart({
         "id": chart_id,
         "title": title,
         "type": "scatter",
@@ -448,7 +454,7 @@ Parameters:
 
 Best for: Activity frequency, performance matrices, time vs category analysis.
 """
-    graph_registry.append({
+    _append_chart({
         "id": chart_id,
         "title": title,
         "type": "heatmap",
@@ -491,7 +497,7 @@ Parameters:
 
 Best for: Performance evaluation, skill comparison, multi-metric scoring.
 """
-    graph_registry.append({
+    _append_chart({
         "id": chart_id,
         "title": title,
         "type": "radar",
@@ -541,7 +547,7 @@ Parameters:
 
 Best for: Revenue vs growth rate, volume vs percentage, dual-axis insights.
 """
-    graph_registry.append({
+    _append_chart({
         "id": chart_id,
         "title": title,
         "series": [
@@ -616,7 +622,7 @@ Best for: Time-series forecasting, trend projection, budget planning.
     # Boundary annotation: vertical line between last historical and first projected
     boundary_x = historical_categories[-1] if historical_categories else None
 
-    graph_registry.append({
+    _append_chart({
         "id": chart_id,
         "title": title,
         "type": "line",

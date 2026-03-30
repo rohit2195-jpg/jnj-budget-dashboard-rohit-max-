@@ -1,0 +1,29 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_airline_ticket_prices_dataset.json",
+  "source_file": "data/airline_ticket_prices_dataset.csv",
+  "columns": [
+    "Ticket_ID",
+    "Airline",
+    "Origin",
+    "Destination",
+    "Distance_km",
+    "Class",
+    "Days_Before_Departure",
+    "Price_USD"
+  ],
+  "dtypes": {
+    "Ticket_ID": "int64",
+    "Airline": "str",
+    "Origin": "str",
+    "Destination": "str",
+    "Distance_km": "int64",
+    "Class": "str",
+    "Days_Before_Departure": "int64",
+    "Price_USD": "float64"
+  },
+  "row_count": 250,
+  "summary": "The dataset contains 250 rows and 8 columns. The columns include 'Ticket_ID', 'Airline', 'Origin', 'Destination', 'Distance_km', 'Class', 'Days_Before_Departure', and 'Price_USD'. The dataset has been cleaned by removing duplicate and null values, and the data types have been corrected. Categorical columns like 'Airline' and 'Class' are included alongside numerical data such as 'Distance_km' and 'Price_USD'.",
+  "created_at": "2026-03-08T04:02:53.619409",
+  "status": "success",
+  "file_hash": "f8f50ee713d42b499e26ac1a99d411d5"
+}
