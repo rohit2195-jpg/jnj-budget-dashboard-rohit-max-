@@ -14,6 +14,10 @@ CORS(app)
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 ALLOWED_EXTENSIONS = {'.csv', '.json'}
 
+# In-memory session store for follow-up questions.
+# Maps session_id -> {manifest, data_path, conversation_history, all_chart_ids}
+sessions = {}
+
 
 @app.errorhandler(413)
 def request_entity_too_large(_):
@@ -205,16 +209,117 @@ def resume_analysis():
         if final_values.get("error") and not final_values.get("summary"):
             return jsonify({"status": "error", "error": final_values["error"]}), 500
 
+        # Create a session for follow-up questions
+        session_id = str(uuid.uuid4())
+        graph_data = final_values.get("graph_data", {"charts": []})
+        original_question = final_values.get("question", "")
+        summary_text = final_values.get("summary", "")
+
+        sessions[session_id] = {
+            "manifest":             final_values.get("manifest"),
+            "data_path":            final_values.get("data_path", ""),
+            "conversation_history": [
+                {
+                    "question":        original_question,
+                    "summary_snippet": summary_text[:300],
+                }
+            ],
+            "all_chart_ids": [c.get("id", "") for c in graph_data.get("charts", [])],
+        }
+
         return jsonify({
             "status":          "complete",
             "success":         True,
-            "summary":         final_values.get("summary", ""),
-            "graphs":          final_values.get("graph_data", {"charts": []}),
+            "session_id":      session_id,
+            "summary":         summary_text,
+            "graphs":          graph_data,
             "forecast_output": final_values.get("forecast_output", {"forecasts": []}),
         }), 200
 
     except Exception as exc:
         print(f"Error in /api/analyze/resume: {exc}")
+        return jsonify({"error": str(exc)}), 500
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POST /api/analyze/followup
+#
+# Runs a lightweight follow-up analysis on the same dataset.
+# Reuses cached manifest, skips preprocessing / human review / forecast.
+#
+# Request body:  { "question": "...", "session_id": "..." }
+# Response:
+#   complete:  { "status": "complete", "new_charts": [...], "explanation": "..." }
+#   error:     { "status": "error", "error": "..." }
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route('/api/analyze/followup', methods=['POST'])
+def followup_analysis():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "No JSON payload provided"}), 400
+
+        user_question = data.get('question')
+        session_id = data.get('session_id')
+
+        if not user_question:
+            return jsonify({"error": "Missing 'question'"}), 400
+        if not session_id or session_id not in sessions:
+            return jsonify({"error": "Invalid or expired session_id"}), 400
+
+        session = sessions[session_id]
+
+        thread_id = str(uuid.uuid4())
+        config = {"configurable": {"thread_id": thread_id}}
+
+        followup_state = {
+            "question":             user_question,
+            "data_path":            session["data_path"],
+            "manifest":             session["manifest"],
+            "is_followup":          True,
+            "conversation_history": session["conversation_history"],
+            "prior_charts":         session["all_chart_ids"],
+            "retry_count":          0,
+            "error":                None,
+            "approved":             None,
+        }
+
+        print(f"[{thread_id[:8]}] Follow-up for session {session_id[:8]}: {user_question}")
+
+        for _ in pipeline.stream(followup_state, config=config):
+            pass
+
+        final_values = pipeline.get_state(config).values
+
+        if final_values.get("error") and not final_values.get("graph_data"):
+            return jsonify({"status": "error", "error": final_values["error"]}), 500
+
+        new_charts = final_values.get("graph_data", {}).get("charts", [])
+        explanation = final_values.get("followup_explanation", "")
+
+        # Update session history (cap at 5 entries)
+        session["conversation_history"].append({
+            "question":        user_question,
+            "summary_snippet": explanation[:300],
+        })
+        if len(session["conversation_history"]) > 5:
+            session["conversation_history"] = session["conversation_history"][-5:]
+
+        # Track new chart IDs
+        session["all_chart_ids"].extend(c.get("id", "") for c in new_charts)
+
+        forecast_output = final_values.get("forecast_output", {"forecasts": []})
+
+        return jsonify({
+            "status":          "complete",
+            "new_charts":      new_charts,
+            "explanation":     explanation,
+            "forecast_output": forecast_output,
+        }), 200
+
+    except Exception as exc:
+        print(f"Error in /api/analyze/followup: {exc}")
         return jsonify({"error": str(exc)}), 500
 
 

@@ -43,9 +43,17 @@ def _build_graph_agent():
     )
 
 
-def create_graph(user_question, analysis_output, forecast_output=None):
+def create_graph(user_question, analysis_output, forecast_output=None, prior_chart_ids=None):
 
     reset_graph_registry()
+
+    dedup_note = ""
+    if prior_chart_ids:
+        dedup_note = f"""
+
+IMPORTANT: The following charts are already on the dashboard. Do NOT recreate them:
+{prior_chart_ids}
+"""
 
     system_prompt = """
 You are a graph construction agent. Your input is a structured JSON object where each key is an
@@ -116,7 +124,8 @@ Analysis Results:
 {analysis_output}{forecast_section}
 
 For each output_label, call the appropriate chart tool. Skip scalar types.
-For each forecast entry, call add_forecast_chart."""}
+For each forecast entry, call add_forecast_chart.
+{dedup_note}""" }
         ]
     })
 

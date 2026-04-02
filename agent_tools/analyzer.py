@@ -13,16 +13,17 @@ def _extract_json_from_output(raw: str):
     """
     Try to find a JSON dict in raw captured stdout.
 
-    Strategy 1+2: scan lines from bottom up for any line that starts with '{'
-                  and parses as a JSON dict.
-    Strategy 3:   fallback regex for multiline JSON.
+    Strategy 1: scan lines from bottom up for any line that starts with '{'
+                and parses as a JSON dict (handles single-line JSON).
+    Strategy 2: find all top-level '{' positions, try parsing from each
+                (last-first) to handle multiline/indented JSON.
 
     Returns dict on success, None on failure.
     """
     if not raw:
         return None
 
-    # Strategy 1+2: bottom-up line scan
+    # Strategy 1: bottom-up line scan (fast path for single-line JSON)
     for line in reversed(raw.splitlines()):
         line = line.strip()
         if line.startswith("{"):
@@ -33,15 +34,30 @@ def _extract_json_from_output(raw: str):
             except json.JSONDecodeError:
                 pass
 
-    # Strategy 3: multiline regex fallback
-    match = re.search(r'\{.*\}', raw, re.DOTALL)
-    if match:
+    # Strategy 2: find all '{' at the start of a line, try parsing from each
+    # position (last occurrence first) to prefer the final JSON output
+    candidates = [m.start() for m in re.finditer(r'^\s*\{', raw, re.MULTILINE)]
+    for pos in reversed(candidates):
         try:
-            parsed = json.loads(match.group())
+            parsed = json.loads(raw[pos:])
             if isinstance(parsed, dict):
                 return parsed
         except json.JSONDecodeError:
-            pass
+            # The slice may have trailing text; try to find the matching '}'
+            depth = 0
+            for i, ch in enumerate(raw[pos:]):
+                if ch == '{':
+                    depth += 1
+                elif ch == '}':
+                    depth -= 1
+                    if depth == 0:
+                        try:
+                            parsed = json.loads(raw[pos:pos + i + 1])
+                            if isinstance(parsed, dict):
+                                return parsed
+                        except json.JSONDecodeError:
+                            break
+                        break
 
     return None
 

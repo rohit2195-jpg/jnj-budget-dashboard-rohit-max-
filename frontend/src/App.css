@@ -890,3 +890,123 @@ html[data-theme="dark"] {
   flex-shrink: 0;
   margin-top: 1px;
 }
+
+
+/* ── Follow-up sections ──────────────────────────────────────────────────── */
+
+.dashboard-additive {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.followup-section {
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 1.25rem 1.5rem;
+}
+
+.followup-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border);
+  color: var(--primary);
+}
+
+.followup-question-label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.followup-charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.followup-explanation {
+  background: var(--bg-card-inner);
+  border-radius: var(--radius-inner);
+  padding: 1rem 1.25rem;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-main);
+}
+
+.followup-explanation p {
+  margin: 0;
+}
+
+/* ── Follow-up input bar ─────────────────────────────────────────────────── */
+
+.followup-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 0.75rem 1rem;
+}
+
+.followup-input-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--bg-card-inner);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-inner);
+  padding: 0.5rem 0.75rem;
+}
+
+.followup-input-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.followup-input-wrapper input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.875rem;
+  color: var(--text-main);
+}
+
+.followup-input-wrapper input::placeholder {
+  color: var(--text-muted);
+}
+
+.followup-form button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: none;
+  border-radius: var(--radius-inner);
+  background: var(--primary);
+  color: var(--text-inverse);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.followup-form button:hover:not(:disabled) {
+  background: var(--primary-hover);
+}
+
+.followup-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.followup-loading {
+  padding: 1rem 0;
+}

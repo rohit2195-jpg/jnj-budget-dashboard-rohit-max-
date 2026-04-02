@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Chart from 'react-apexcharts';
 import ReactMarkdown from 'react-markdown';
 import {
   Search, LayoutDashboard, FileText, Loader2, AlertCircle,
   Plus, MessageSquare, Trash2, ClipboardList, CheckCircle, XCircle,
   TrendingUp, TrendingDown, Minus, Sun, Moon, Upload, Database,
+  Send,
 } from 'lucide-react';
 import './App.css';
 
@@ -28,6 +29,12 @@ function timeLabel(ts) {
   if (d === 1) return 'Yesterday';
   if (d < 7)  return `${d}d ago`;
   return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function cloneResult(value) {
+  if (value == null) return value;
+  if (typeof structuredClone === 'function') return structuredClone(value);
+  return JSON.parse(JSON.stringify(value));
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -152,7 +159,6 @@ function App() {
   const [question, setQuestion]           = useState('');
   // 'idle' | 'loading_start' | 'pending_approval' | 'loading_resume' | 'complete' | 'error'
   const [appState, setAppState]           = useState('idle');
-  const [data, setData]                   = useState(null);
   const [error, setError]                 = useState(null);
   const [threadId, setThreadId]           = useState(null);
   const [pendingPlan, setPendingPlan]     = useState(null);
@@ -162,6 +168,13 @@ function App() {
   const [datasets, setDatasets]           = useState([]);
   const [selectedDataset, setSelectedDataset] = useState('');
   const [uploading, setUploading]         = useState(false);
+
+  // Follow-up state
+  const [sessionId, setSessionId]                   = useState(null);
+  const [dashboardSections, setDashboardSections]   = useState([]);
+  const [followupQuestion, setFollowupQuestion]     = useState('');
+  const [followupLoading, setFollowupLoading]       = useState(false);
+  const followupEndRef = useRef(null);
 
   const fetchDatasets = async () => {
     try {
@@ -212,15 +225,31 @@ function App() {
 
   // ── sidebar actions ────────────────────────────────────────────────────────
   const handleNewChat = () => {
-    setQuestion(''); setData(null); setError(null);
+    setQuestion(''); setError(null);
     setThreadId(null); setPendingPlan(null);
     setActiveConvId(null); setAppState('idle');
+    setSessionId(null); setDashboardSections([]);
+    setFollowupQuestion('');
   };
 
   const handleLoadConversation = (conv) => {
-    setQuestion(conv.question); setData(conv.data);
+    setQuestion(conv.question);
     setError(null); setThreadId(null); setPendingPlan(null);
     setActiveConvId(conv.id); setAppState('complete');
+    // Restore sections if available, otherwise wrap old format into initial section
+    if (conv.sections) {
+      setDashboardSections(cloneResult(conv.sections));
+    } else if (conv.data) {
+      setDashboardSections([{
+        type: 'initial',
+        question: conv.question,
+        charts: conv.data.graphs?.charts || [],
+        forecasts: conv.data.forecast_output?.forecasts || [],
+        summary: conv.data.summary,
+      }]);
+    }
+    setSessionId(conv.sessionId || null);
+    setFollowupQuestion('');
   };
 
   const handleDeleteConversation = (id) => {
@@ -233,8 +262,9 @@ function App() {
     e.preventDefault();
     if (!question.trim()) return;
     setAppState('loading_start');
-    setError(null); setData(null); setThreadId(null);
+    setError(null); setThreadId(null);
     setPendingPlan(null); setActiveConvId(null);
+    setSessionId(null); setDashboardSections([]);
 
     try {
       const response = await fetch('http://localhost:5001/api/analyze/start', {
@@ -289,11 +319,65 @@ function App() {
   };
 
   const finishAnalysis = (result) => {
-    const conv = { id: Date.now().toString(), question, timestamp: Date.now(), data: result };
+    const snapshot = cloneResult(result);
+    const initialSection = {
+      type: 'initial',
+      question,
+      charts: snapshot.graphs?.charts || [],
+      forecasts: snapshot.forecast_output?.forecasts || [],
+      summary: snapshot.summary,
+    };
+    const sections = [initialSection];
+    const conv = {
+      id: Date.now().toString(), question, timestamp: Date.now(),
+      data: snapshot, sections, sessionId: snapshot.session_id || null,
+    };
     setConversations(prev => [conv, ...prev]);
     setActiveConvId(conv.id);
-    setData(result);
+    setDashboardSections(sections);
+    setSessionId(snapshot.session_id || null);
     setAppState('complete');
+  };
+
+  // ── follow-up flow ────────────────────────────────────────────────────
+  const handleFollowup = async (e) => {
+    e.preventDefault();
+    if (!followupQuestion.trim() || !sessionId || followupLoading) return;
+    setFollowupLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch('http://localhost:5001/api/analyze/followup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question: followupQuestion, session_id: sessionId }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Follow-up failed');
+
+      const newSection = {
+        type: 'followup',
+        question: followupQuestion,
+        charts: result.new_charts || [],
+        forecasts: result.forecast_output?.forecasts || [],
+        explanation: result.explanation,
+      };
+      setDashboardSections(prev => {
+        const updated = [...prev, newSection];
+        // Also update the saved conversation
+        setConversations(convs => convs.map(c =>
+          c.id === activeConvId ? { ...c, sections: cloneResult(updated) } : c
+        ));
+        return updated;
+      });
+      setFollowupQuestion('');
+      // Auto-scroll to new section
+      setTimeout(() => followupEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setFollowupLoading(false);
+    }
   };
 
   const isInputDisabled = loading || appState === 'pending_approval';
@@ -420,90 +504,206 @@ function App() {
             <WelcomeState onSuggestionClick={setQuestion} />
           )}
 
-          {/* Dashboard (charts on top, report below) */}
-          {appState === 'complete' && data && (
-            <div className="dashboard-grid">
-              <section className="charts-section">
-                <div className="card-header">
-                  <LayoutDashboard className="card-icon" />
-                  <h2>Visual Insights</h2>
-                </div>
-                <div className="charts-grid">
-                  {data.graphs?.charts?.length > 0 ? (
-                    data.graphs.charts.map((chart, index) => {
-                      const isHorizontal = chart.options?.plotOptions?.bar?.horizontal === true;
-                      const catCount = chart.options?.xaxis?.categories?.length || 0;
-                      const chartHeight = isHorizontal
-                        ? Math.max(320, catCount * 38 + 60)
-                        : 320;
-                      return (
-                        <div key={chart.id || index} className="chart-card">
-                          <h3>{chart.title || chart.options?.title?.text || `Chart ${index + 1}`}</h3>
-                          <Chart
-                            options={{
-                              ...(chart.options || {}),
-                              theme: { mode: theme, palette: 'palette1' },
-                              chart: {
-                                ...(chart.options?.chart || {}),
-                                background: 'transparent',
-                                foreColor: theme === 'dark' ? '#94a3b8' : '#64748b',
-                              },
-                              grid: {
-                                ...(chart.options?.grid || {}),
-                                borderColor: theme === 'dark' ? '#334155' : '#e2e8f0',
-                              },
-                              tooltip: {
-                                ...(chart.options?.tooltip || {}),
-                                theme,
-                                y: { formatter: undefined },
-                              },
-                              xaxis: {
-                                ...(chart.options?.xaxis || {}),
-                                labels: {
-                                  ...(chart.options?.xaxis?.labels || {}),
-                                  formatter: undefined,
-                                },
-                              },
-                            }}
-                            series={chart.series || []}
-                            type={chart.type || 'bar'}
-                            width="100%"
-                            height={chartHeight}
-                          />
+          {/* Dashboard — renders all sections (initial + follow-ups) */}
+          {appState === 'complete' && dashboardSections.length > 0 && (
+            <div key={activeConvId || 'live-dashboard'} className="dashboard-additive">
+              {dashboardSections.map((section, sIdx) => {
+                const sectionKey = `${activeConvId || 'live'}-section-${sIdx}`;
+
+                if (section.type === 'initial') {
+                  return (
+                    <div key={sectionKey} className="dashboard-grid">
+                      <section className="charts-section">
+                        <div className="card-header">
+                          <LayoutDashboard className="card-icon" />
+                          <h2>Visual Insights</h2>
                         </div>
-                      );
-                    })
-                  ) : (
-                    <p className="no-charts">No visual data generated for this query.</p>
-                  )}
+                        <div className="charts-grid">
+                          {section.charts?.length > 0 ? (
+                            section.charts.map((chart, index) => {
+                              const chartKey = `${sectionKey}:${chart.id || index}:${index}`;
+                              const isHorizontal = chart.options?.plotOptions?.bar?.horizontal === true;
+                              const catCount = chart.options?.xaxis?.categories?.length || 0;
+                              const chartHeight = isHorizontal
+                                ? Math.max(320, catCount * 38 + 60)
+                                : 320;
+                              const chartOptions = cloneResult(chart.options || {});
+                              const chartSeries = cloneResult(chart.series || []);
+                              return (
+                                <div key={chartKey} className="chart-card">
+                                  <h3>{chart.title || chart.options?.title?.text || `Chart ${index + 1}`}</h3>
+                                  <Chart
+                                    key={chartKey}
+                                    options={{
+                                      ...chartOptions,
+                                      theme: { mode: theme, palette: 'palette1' },
+                                      chart: {
+                                        ...(chartOptions.chart || {}),
+                                        background: 'transparent',
+                                        foreColor: theme === 'dark' ? '#94a3b8' : '#64748b',
+                                      },
+                                      grid: {
+                                        ...(chartOptions.grid || {}),
+                                        borderColor: theme === 'dark' ? '#334155' : '#e2e8f0',
+                                      },
+                                      tooltip: {
+                                        ...(chartOptions.tooltip || {}),
+                                        theme,
+                                        y: { formatter: undefined },
+                                      },
+                                      xaxis: {
+                                        ...(chartOptions.xaxis || {}),
+                                        labels: {
+                                          ...(chartOptions.xaxis?.labels || {}),
+                                          formatter: undefined,
+                                        },
+                                      },
+                                    }}
+                                    series={chartSeries}
+                                    type={chart.type || 'bar'}
+                                    width="100%"
+                                    height={chartHeight}
+                                  />
+                                </div>
+                              );
+                            })
+                          ) : (
+                            <p className="no-charts">No visual data generated for this query.</p>
+                          )}
+                        </div>
+                      </section>
+
+                      <div className="right-panel">
+                        {section.forecasts?.length > 0 && (
+                          <section className="forecast-section">
+                            <div className="card-header">
+                              <TrendingUp className="card-icon" />
+                              <h2>Future Outlook</h2>
+                            </div>
+                            <div className="forecast-grid">
+                              {section.forecasts.map((fc, i) => (
+                                <ForecastCard key={`${sectionKey}:fc-${fc.forecast_id || i}`} fc={fc} />
+                              ))}
+                            </div>
+                          </section>
+                        )}
+
+                        <section className="report-section">
+                          <div className="card-header">
+                            <FileText className="card-icon" />
+                            <h2>Analysis Report</h2>
+                          </div>
+                          <div className="report-content">
+                            <ReactMarkdown>{section.summary}</ReactMarkdown>
+                          </div>
+                        </section>
+                      </div>
+                    </div>
+                  );
+                }
+
+                /* Follow-up section */
+                return (
+                  <div key={sectionKey} className="followup-section">
+                    <div className="followup-divider">
+                      <MessageSquare size={14} />
+                      <span className="followup-question-label">{section.question}</span>
+                    </div>
+                    {section.charts?.length > 0 && (
+                      <div className="followup-charts-grid">
+                        {section.charts.map((chart, index) => {
+                          const chartKey = `${sectionKey}:${chart.id || index}:${index}`;
+                          const isHorizontal = chart.options?.plotOptions?.bar?.horizontal === true;
+                          const catCount = chart.options?.xaxis?.categories?.length || 0;
+                          const chartHeight = isHorizontal
+                            ? Math.max(320, catCount * 38 + 60)
+                            : 320;
+                          const chartOptions = cloneResult(chart.options || {});
+                          const chartSeries = cloneResult(chart.series || []);
+                          return (
+                            <div key={chartKey} className="chart-card">
+                              <h3>{chart.title || chart.options?.title?.text || `Chart ${index + 1}`}</h3>
+                              <Chart
+                                key={chartKey}
+                                options={{
+                                  ...chartOptions,
+                                  theme: { mode: theme, palette: 'palette1' },
+                                  chart: {
+                                    ...(chartOptions.chart || {}),
+                                    background: 'transparent',
+                                    foreColor: theme === 'dark' ? '#94a3b8' : '#64748b',
+                                  },
+                                  grid: {
+                                    ...(chartOptions.grid || {}),
+                                    borderColor: theme === 'dark' ? '#334155' : '#e2e8f0',
+                                  },
+                                  tooltip: {
+                                    ...(chartOptions.tooltip || {}),
+                                    theme,
+                                    y: { formatter: undefined },
+                                  },
+                                  xaxis: {
+                                    ...(chartOptions.xaxis || {}),
+                                    labels: {
+                                      ...(chartOptions.xaxis?.labels || {}),
+                                      formatter: undefined,
+                                    },
+                                  },
+                                }}
+                                series={chartSeries}
+                                type={chart.type || 'bar'}
+                                width="100%"
+                                height={chartHeight}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {section.forecasts?.length > 0 && (
+                      <div className="forecast-grid" style={{ marginBottom: '1rem' }}>
+                        {section.forecasts.map((fc, i) => (
+                          <ForecastCard key={`${sectionKey}:fc-${fc.forecast_id || i}`} fc={fc} />
+                        ))}
+                      </div>
+                    )}
+                    {section.explanation && (
+                      <div className="followup-explanation">
+                        <ReactMarkdown>{section.explanation}</ReactMarkdown>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+
+              {/* Follow-up loading indicator */}
+              {followupLoading && (
+                <div className="loading-state followup-loading">
+                  <Loader2 className="animate-spin loading-icon" />
+                  <p>Analyzing follow-up question...</p>
                 </div>
-              </section>
+              )}
 
-              <div className="right-panel">
-                {data.forecast_output?.forecasts?.length > 0 && (
-                  <section className="forecast-section">
-                    <div className="card-header">
-                      <TrendingUp className="card-icon" />
-                      <h2>Future Outlook</h2>
-                    </div>
-                    <div className="forecast-grid">
-                      {data.forecast_output.forecasts.map((fc, i) => (
-                        <ForecastCard key={fc.forecast_id || i} fc={fc} />
-                      ))}
-                    </div>
-                  </section>
-                )}
+              {/* Follow-up input bar */}
+              {sessionId && (
+                <form onSubmit={handleFollowup} className="followup-form">
+                  <div className="followup-input-wrapper">
+                    <MessageSquare size={16} className="followup-input-icon" />
+                    <input
+                      type="text"
+                      placeholder="Ask a follow-up about this data..."
+                      value={followupQuestion}
+                      onChange={(e) => setFollowupQuestion(e.target.value)}
+                      disabled={followupLoading}
+                    />
+                  </div>
+                  <button type="submit" disabled={followupLoading || !followupQuestion.trim()}>
+                    {followupLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                  </button>
+                </form>
+              )}
 
-                <section className="report-section">
-                  <div className="card-header">
-                    <FileText className="card-icon" />
-                    <h2>Analysis Report</h2>
-                  </div>
-                  <div className="report-content">
-                    <ReactMarkdown>{data.summary}</ReactMarkdown>
-                  </div>
-                </section>
-              </div>
+              <div ref={followupEndRef} />
             </div>
           )}
 

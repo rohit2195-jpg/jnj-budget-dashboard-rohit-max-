@@ -137,6 +137,8 @@ def _extract_execute_tool_output(messages) -> str:
                 execute_ids.add(tc_id)
 
     # Step 2: find ToolMessages whose tool_call_id matches
+    # Collect all outputs but prefer the last one that contains valid JSON,
+    # since earlier executions may have failed and produced error strings.
     results = []
     for msg in messages:
         tool_call_id = getattr(msg, "tool_call_id", None)
@@ -147,4 +149,10 @@ def _extract_execute_tool_output(messages) -> str:
             if content:
                 results.append(content)
 
-    return "\n\n".join(results)
+    if not results:
+        return ""
+
+    # Return only the last execution output — if the agent retried after a
+    # failure, the last output is the corrected one and earlier outputs
+    # contain error messages that confuse downstream JSON parsing.
+    return results[-1]

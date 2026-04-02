@@ -24,10 +24,15 @@ OUTPUT FORMAT — return only this JSON, no other text:
 }"""
 
 
-def create_analysis_plan(user_question: str, manifest: dict) -> dict:
+def create_analysis_plan(user_question: str, manifest: dict,
+                         is_followup: bool = False,
+                         conversation_history: list | None = None) -> dict:
     """
     Generates a structured checklist of specific pandas analysis steps
     based on the user question and dataset schema.
+
+    When is_followup is True, produces a focused 1-2 step plan that avoids
+    repeating prior analyses listed in conversation_history.
 
     Returns a dict:
     {
@@ -42,7 +47,31 @@ def create_analysis_plan(user_question: str, manifest: dict) -> dict:
     row_count = manifest.get("row_count", "unknown")
     summary = manifest.get("summary", "")
 
-    user_msg = f"""User question: "{user_question}"
+    if is_followup and conversation_history:
+        history_text = "\n".join(
+            f"  - Q: \"{h['question']}\" → {h.get('summary_snippet', 'completed')}"
+            for h in (conversation_history or [])[-5:]
+        )
+        user_msg = f"""This is a FOLLOW-UP question about a dataset that has already been analyzed.
+
+Previous analyses performed:
+{history_text}
+
+The user now asks: "{user_question}"
+
+Dataset schema:
+- Columns: {columns}
+- Column types: {dtypes}
+- Row count: {row_count}
+
+Generate 1 to 2 focused analysis steps that answer ONLY this follow-up question.
+Do NOT repeat any analysis already performed above.
+Rules:
+- Use only column names listed above
+- Limit any step aggregating many categories to "top 15 X by Y"
+- Output ONLY the JSON object. No markdown fences, no explanation."""
+    else:
+        user_msg = f"""User question: "{user_question}"
 
 Dataset schema:
 - Columns: {columns}

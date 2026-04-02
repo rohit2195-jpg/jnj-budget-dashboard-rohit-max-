@@ -82,3 +82,36 @@ Do not describe what you are doing."""}
     if isinstance(content, list):
         return content[0].get("text", "")
     return content
+
+
+def generate_followup_explanation(user_question: str, analysis_output: str,
+                                  conversation_history: list | None = None) -> str:
+    """Generate a short 2-4 sentence explanation for a follow-up analysis result."""
+    from langchain_core.messages import SystemMessage, HumanMessage
+
+    history_text = ""
+    if conversation_history:
+        history_text = "\nPrevious questions answered:\n" + "\n".join(
+            f"  - {h['question']}" for h in (conversation_history or [])[-5:]
+        ) + "\n"
+
+    response = model.invoke([
+        SystemMessage(content=(
+            "You are a data analyst. Write 2-4 sentences explaining follow-up analysis results. "
+            "Cite specific numbers with their units. Bold the most important number using **value**. "
+            "Be concise — no headings, no bullet points, just a short paragraph."
+        )),
+        HumanMessage(content=f"""The user asked: "{user_question}"
+{history_text}
+Analysis results:
+---
+{analysis_output}
+---
+
+Explain these results concisely in 2-4 sentences."""),
+    ])
+
+    raw = response.content if hasattr(response, "content") else response.text
+    if isinstance(raw, list):
+        raw = raw[0].get("text", "") if raw else ""
+    return raw.strip()

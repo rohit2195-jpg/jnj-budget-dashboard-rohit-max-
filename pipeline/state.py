@@ -17,6 +17,12 @@ class PipelineState(TypedDict, total=False):
     graph_data:      Optional[dict]                 # Output of create_graph {"charts": [...]}
     summary:         Optional[str]                  # Markdown report from summarize_results
 
+    # ── follow-up support ───────────────────────────────────────────────
+    is_followup:           bool                        # True when this is a follow-up question
+    conversation_history:  Optional[list]               # [{question, summary_snippet}] from prior turns
+    prior_charts:          Optional[list]               # Chart IDs already on the dashboard (for dedup)
+    followup_explanation:  Optional[str]                # Short explanation for follow-up (replaces full summary)
+
     # ── control / bookkeeping ─────────────────────────────────────────────
     error:           Optional[str]  # Human-readable error, set on failure
     retry_count:     int            # Number of analyze-level retries (starts at 0)

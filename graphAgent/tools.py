@@ -1,8 +1,11 @@
-from contextvars import ContextVar
 from langchain.tools import tool
 from typing import List
 
-graph_registry_var: ContextVar[list] = ContextVar("graph_registry", default=[])
+# Plain module-level list instead of ContextVar.
+# LangGraph's CompiledStateGraph copies contextvars contexts for each node,
+# so ContextVar mutations inside tool calls are silently discarded.
+# Flask handles requests synchronously, so a module-level list is safe.
+_graph_registry: list = []
 
 COLOR_PALETTE = [
     "#6366F1", "#22C55E", "#F59E0B", "#EF4444", "#3B82F6",
@@ -25,17 +28,15 @@ def _cap_series(categories, values, n=15):
     return top_cats, top_vals
 
 def reset_graph_registry():
-    graph_registry_var.set([])
+    _graph_registry.clear()
 
 
 def get_graph_registry():
-    return {"charts": list(graph_registry_var.get())}
+    return {"charts": list(_graph_registry)}
 
 
 def _append_chart(chart: dict):
-    charts = list(graph_registry_var.get())
-    charts.append(chart)
-    graph_registry_var.set(charts)
+    _graph_registry.append(chart)
 
 @tool
 def add_line_chart(
