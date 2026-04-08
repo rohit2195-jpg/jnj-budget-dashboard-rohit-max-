@@ -62,9 +62,14 @@ def _extract_json_from_output(raw: str):
     return None
 
 
-def generate_analysis_code(user_question, data_path):
+def generate_analysis_code(user_question, data_path=None, data_paths_dict=None):
     """
     Generates Python code to analyze the dataset based on the user's question using Gemini.
+
+    Args:
+        user_question: The analysis question.
+        data_path: Single file path (backward compat, used to build a one-entry dict).
+        data_paths_dict: Dict mapping short names to file paths (multi-file).
     """
     load_dotenv()
     api_key = os.getenv("GEMINI_API_KEY")
@@ -75,32 +80,63 @@ def generate_analysis_code(user_question, data_path):
 
     client = genai.Client(api_key=api_key)
 
-    # Ensure the data path is valid
-    if not os.path.exists(data_path):
-        print(f'Error: Data file not found at {data_path}')
-        return 
+    # Build file_paths dict — always dict-based
+    if data_paths_dict:
+        file_paths = data_paths_dict
+    elif data_path:
+        stem = os.path.splitext(os.path.basename(data_path))[0]
+        file_paths = {stem: data_path}
+    else:
+        print("Error: No data path provided")
+        return
 
-    # Get the header of the CSV for context
-    try:
-        df_header = pd.read_json(data_path).columns.tolist()
-        df_first_rows = pd.read_json(data_path).head(5).to_string()
-    except Exception as e:
-        print(f'Error reading data file: {e}')
-        return 
+    # Validate all paths exist and read headers
+    dataset_sections = []
+    for name, path in file_paths.items():
+        if not os.path.exists(path):
+            print(f'Error: Data file not found at {path}')
+            return
+        ext = os.path.splitext(path)[1].lower()
+        read_fn = "pd.read_csv" if ext == ".csv" else "pd.read_json"
+        try:
+            df = pd.read_csv(path) if ext == ".csv" else pd.read_json(path)
+            df_header = df.columns.tolist()
+            df_first_rows = df.head(5).to_string()
+        except Exception as e:
+            print(f'Error reading data file {path}: {e}')
+            return
+        dataset_sections.append(
+            f'  "{name}": "{path}"\n'
+            f"    Format: {'CSV' if ext == '.csv' else 'JSON'} (load with {read_fn})\n"
+            f"    Columns: {df_header}\n"
+            f"    First 5 rows:\n{df_first_rows}"
+        )
+
+    is_multi = len(file_paths) > 1
+    dataset_text = "DATASETS (file_paths dict):\n" + "\n\n".join(dataset_sections)
+
+    if is_multi:
+        load_instruction = (
+            "Load files with pd.read_json(file_paths['<name>']).\n"
+            "If your analysis requires combining files, use pd.merge() on appropriate key columns."
+        )
+        example_load = '    df_sales = pd.read_json(file_paths["sales"])\n    df_products = pd.read_json(file_paths["products"])\n    df = pd.merge(df_sales, df_products, on="product_id")'
+    else:
+        first_name = next(iter(file_paths))
+        load_instruction = f'Load the file with pd.read_json(file_paths["{first_name}"]).'
+        example_load = f'    df = pd.read_json(file_paths["{first_name}"])'
 
     prompt = f"""You are a Python data analyst. Write a single function that executes ALL of the analysis steps listed below and emits structured JSON.
 
-DATASET
-- Path: {data_path}
-- Format: JSON (load with pd.read_json)
-- Columns: {df_header}
-- First 5 rows:
-{df_first_rows}
+{dataset_text}
+
+{load_instruction}
 
 USER QUESTION: "{user_question}"
 
 REQUIRED FUNCTION SIGNATURE:
-def analyze_spending_data(file_path):
+def analyze_spending_data(file_paths):
+    # file_paths is a dict mapping names to JSON file paths
 
 OUTPUT SCHEMA — build a dict called `results`, keyed by output_label strings.
 Each value must be one of these typed structures:
@@ -132,13 +168,13 @@ RULES:
 - Do NOT print anything else inside the function
 - Do NOT use markdown fences in your output
 
-EXAMPLE (dataset with columns ["Recipient Name", "Award Amount", "Start Date"]):
+EXAMPLE:
 
-def analyze_spending_data(file_path):
+def analyze_spending_data(file_paths):
     import pandas as pd
     import json
 
-    df = pd.read_json(file_path)
+{example_load}
 
     top = df.groupby("Recipient Name")["Award Amount"].sum().sort_values(ascending=False).head(14)
     others = df.groupby("Recipient Name")["Award Amount"].sum().sort_values(ascending=False).iloc[14:].sum()
@@ -167,7 +203,7 @@ def analyze_spending_data(file_path):
 
     try:
         response = model.invoke(prompt)
-        
+
         # clean response
         response = response.text
         response = response.strip('```').lstrip('python')
@@ -176,7 +212,7 @@ def analyze_spending_data(file_path):
         return response
     except Exception as e:
         print(f'An error occurred with the LLM: {e}')
-        return 
+        return
 
 def execute_analysis(code, *args, target_function=None, **kwargs):
     from io import StringIO

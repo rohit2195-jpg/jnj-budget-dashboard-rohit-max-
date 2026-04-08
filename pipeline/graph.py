@@ -4,7 +4,7 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import interrupt
 
-from pipeline.state import PipelineState, serialize_analysis_output
+from pipeline.state import PipelineState, serialize_analysis_output, get_all_data_paths, get_all_manifests
 
 # Existing agent imports
 from pre_processing.processing_agent import callPreProcessAgent
@@ -28,15 +28,19 @@ def entry_router_node(state: PipelineState) -> dict:
 
 def preprocess_node(state: PipelineState) -> dict:
     """
-    Run callPreProcessAgent.
-    Success → {"manifest": <dict>}
+    Run callPreProcessAgent for each file in data_paths.
+    Success → {"manifest": <dict>, "manifests": [<dict>, ...]}
     Failure → {"error": <str>}
     """
     try:
-        manifest = callPreProcessAgent(state["data_path"])
-        if manifest.get("status") == "error":
-            return {"error": f"Preprocessing failed: {manifest.get('error', 'unknown')}"}
-        return {"manifest": manifest, "error": None}
+        data_paths = get_all_data_paths(state)
+        manifests = []
+        for dp in data_paths:
+            manifest = callPreProcessAgent(dp)
+            if manifest.get("status") == "error":
+                return {"error": f"Preprocessing failed for {dp}: {manifest.get('error', 'unknown')}"}
+            manifests.append(manifest)
+        return {"manifests": manifests, "manifest": manifests[0], "error": None}
     except Exception as exc:
         return {"error": f"Preprocessing exception: {exc}"}
 
@@ -48,11 +52,13 @@ def plan_node(state: PipelineState) -> dict:
     Failure → {"error": <str>}
     """
     try:
+        manifests = get_all_manifests(state)
         plan = create_analysis_plan(
             state["question"],
             state["manifest"],
             is_followup=state.get("is_followup", False),
             conversation_history=state.get("conversation_history"),
+            manifests=manifests if len(manifests) > 1 else None,
         )
         if not plan.get("analyses"):
             return {"error": "Planner returned an empty plan."}
@@ -84,7 +90,12 @@ def analyze_node(state: PipelineState) -> dict:
     Failure → {"error": <str>, "analysis_output": None}
     """
     try:
-        output = callAgent(state["question"], state["manifest"], state["plan"])
+        manifests = get_all_manifests(state)
+        manifest = state.get("manifest") or (manifests[0] if manifests else None)
+        if manifest is None:
+            return {"error": "No manifest available for analysis.", "analysis_output": None}
+        output = callAgent(state["question"], manifest, state["plan"],
+                           manifests=manifests if len(manifests) > 1 else None)
         if not output or (isinstance(output, str) and not output.strip()):
             return {
                 "error": "Analysis produced empty output.",
@@ -178,7 +189,7 @@ MAX_RETRIES = 2
 
 def route_entry(state: PipelineState) -> str:
     """Route follow-ups (with cached manifest) to plan, else to preprocess."""
-    if state.get("is_followup") and state.get("manifest"):
+    if state.get("is_followup") and (state.get("manifest") or state.get("manifests")):
         return "plan"
     return "preprocess"
 

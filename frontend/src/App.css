@@ -108,8 +108,9 @@ html[data-theme="dark"] {
   display: flex;
   gap: 0.75rem;
   flex: 1;
-  max-width: 600px;
-  margin: 0 1.5rem;
+  max-width: 560px;
+  min-width: 0;
+  margin: 0 1rem;
 }
 
 .search-input-wrapper {
@@ -183,14 +184,19 @@ html[data-theme="dark"] {
 }
 
 .dataset-picker select {
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0.625rem;
   border: 1px solid var(--border);
   border-radius: var(--radius-inner);
   font-size: 0.8125rem;
   background-color: var(--bg-page);
   color: var(--text-main);
   cursor: pointer;
-  max-width: 200px;
+  /* Wide enough for typical dataset names; constrained to keep header tidy */
+  max-width: 180px;
+  min-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: border-color 0.2s;
 }
 
@@ -205,22 +211,64 @@ html[data-theme="dark"] {
   cursor: not-allowed;
 }
 
+/* ── Upload button group ─────────────────────────────────────────────────────── */
+/* Groups the two upload buttons (Files / Folder) visually as a single unit      */
+.upload-btn-group {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-inner);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
 .upload-btn {
   display: flex;
   align-items: center;
-  justify-content: center;
-  padding: 0.4375rem;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-inner);
+  gap: 0.3125rem;
+  padding: 0.375rem 0.625rem;
   color: var(--text-muted);
   cursor: pointer;
-  transition: color 0.15s, background-color 0.15s, border-color 0.15s;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background-color: var(--bg-page);
+  transition: color 0.15s, background-color 0.15s;
+  white-space: nowrap;
+  user-select: none;
+  line-height: 1;
+}
+
+/* Divider between the two buttons */
+.upload-btn + .upload-btn {
+  border-left: 1px solid var(--border);
 }
 
 .upload-btn:hover {
   color: var(--primary);
-  border-color: var(--primary);
   background-color: var(--primary-muted);
+}
+
+/* File upload button — subtle blue tint on hover */
+.upload-btn--file:hover {
+  color: var(--primary);
+  background-color: var(--primary-muted);
+}
+
+/* Folder upload button — slightly warm tint to distinguish from file button */
+.upload-btn--folder:hover {
+  color: var(--accent, #7c3aed);
+  background-color: rgba(37, 99, 235, 0.07);
+}
+
+html[data-theme="dark"] .upload-btn--folder:hover {
+  color: var(--accent);
+  background-color: rgba(16, 185, 129, 0.12);
+}
+
+.upload-btn-label {
+  /* Hide on very narrow screens via media query below */
+  font-size: 0.6875rem;
+  letter-spacing: 0.01em;
 }
 
 .header-actions {
@@ -403,6 +451,33 @@ html[data-theme="dark"] {
   }
   .charts-section {
     overflow: visible;
+  }
+}
+
+/* ── Header responsive: hide upload button labels at medium widths ─────────── */
+@media (max-width: 1100px) {
+  .search-form {
+    max-width: 420px;
+  }
+  .dataset-picker select {
+    max-width: 140px;
+  }
+}
+
+/* ── Header responsive: icon-only upload buttons at narrow widths ───────────── */
+@media (max-width: 860px) {
+  .upload-btn-label {
+    display: none;
+  }
+  .upload-btn {
+    padding: 0.375rem 0.5rem;
+  }
+  .search-form {
+    max-width: 280px;
+    margin: 0 0.625rem;
+  }
+  .logo-section h1 {
+    display: none;
   }
 }
 

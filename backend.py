@@ -1,3 +1,4 @@
+import json
 import os
 import uuid
 from flask import Flask, request, jsonify
@@ -12,11 +13,64 @@ app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100 MB upload limit
 CORS(app)
 
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+REPORTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'reports')
+SESSIONS_FILE = os.path.join(REPORTS_DIR, 'followup_sessions.json')
 ALLOWED_EXTENSIONS = {'.csv', '.json'}
+MAX_FILES_PER_ANALYSIS = 10
 
-# In-memory session store for follow-up questions.
+
+def _normalize_session(payload):
+    """Keep persisted session payloads backward-compatible and minimal."""
+    if not isinstance(payload, dict):
+        return None
+    # Backward compat: build data_paths/manifests from single-file fields if missing
+    data_path = payload.get("data_path", "")
+    data_paths = payload.get("data_paths") or ([data_path] if data_path else [])
+    manifest = payload.get("manifest")
+    manifests = payload.get("manifests") or ([manifest] if manifest else [])
+    return {
+        "manifest": manifest,
+        "manifests": manifests,
+        "data_path": data_path,
+        "data_paths": data_paths,
+        "conversation_history": payload.get("conversation_history") or [],
+        "all_chart_ids": payload.get("all_chart_ids") or [],
+    }
+
+
+def _load_sessions():
+    """Load follow-up sessions from disk so saved chats survive backend restarts."""
+    if not os.path.exists(SESSIONS_FILE):
+        return {}
+
+    try:
+        with open(SESSIONS_FILE, 'r', encoding='utf-8') as fh:
+            raw = json.load(fh)
+        if not isinstance(raw, dict):
+            return {}
+        return {
+            session_id: normalized
+            for session_id, payload in raw.items()
+            if (normalized := _normalize_session(payload)) is not None
+        }
+    except Exception as exc:
+        print(f"Warning: failed to load persisted follow-up sessions: {exc}")
+        return {}
+
+
+def _save_sessions():
+    """Persist follow-up sessions so localStorage conversations keep working."""
+    try:
+        os.makedirs(REPORTS_DIR, exist_ok=True)
+        with open(SESSIONS_FILE, 'w', encoding='utf-8') as fh:
+            json.dump(sessions, fh, indent=2)
+    except Exception as exc:
+        print(f"Warning: failed to persist follow-up sessions: {exc}")
+
+
+# Follow-up session store.
 # Maps session_id -> {manifest, data_path, conversation_history, all_chart_ids}
-sessions = {}
+sessions = _load_sessions()
 
 
 @app.errorhandler(413)
@@ -34,6 +88,8 @@ def request_entity_too_large(_):
 @app.route('/api/datasets', methods=['GET'])
 def list_datasets():
     datasets = []
+    folder_files = {}  # track files per subfolder for folder entries
+
     for root, dirs, files in os.walk(DATA_DIR):
         # Skip hidden directories
         dirs[:] = [d for d in dirs if not d.startswith('.')]
@@ -50,7 +106,27 @@ def list_datasets():
                 'name': display_name,
                 'path': rel_path,
                 'size': os.path.getsize(abs_path),
+                'type': 'file',
             })
+
+            # Track subfolder membership
+            parent = os.path.relpath(root, DATA_DIR)
+            if parent != '.':
+                folder_files.setdefault(parent, []).append(rel_path)
+
+    # Add folder-level entries for subdirectories with multiple data files
+    for folder_name, file_list in folder_files.items():
+        if len(file_list) >= 1:
+            folder_rel = os.path.relpath(os.path.join(DATA_DIR, folder_name),
+                                         os.path.dirname(DATA_DIR))
+            datasets.append({
+                'name': folder_name + '/',
+                'path': folder_rel + '/',
+                'type': 'folder',
+                'file_count': len(file_list),
+                'files': sorted(file_list),
+            })
+
     datasets.sort(key=lambda d: d['name'].lower())
     return jsonify({'datasets': datasets}), 200
 
@@ -85,6 +161,59 @@ def upload_dataset():
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# POST /api/upload-folder
+#
+# Upload multiple CSV/JSON files into a named subfolder under data/.
+# Accepts multipart form data with multiple 'files' fields and optional 'folder_name'.
+# Response: { "folder_path": "data/my_folder/", "files": ["data/my_folder/a.csv", ...] }
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route('/api/upload-folder', methods=['POST'])
+def upload_folder():
+    files = request.files.getlist('files')
+    if not files:
+        return jsonify({'error': 'No files provided'}), 400
+
+    # Filter to allowed extensions
+    valid_files = []
+    for f in files:
+        if not f.filename:
+            continue
+        ext = os.path.splitext(f.filename)[1].lower()
+        if ext in ALLOWED_EXTENSIONS:
+            valid_files.append(f)
+
+    if not valid_files:
+        return jsonify({'error': 'No valid CSV/JSON files found'}), 400
+
+    if len(valid_files) > MAX_FILES_PER_ANALYSIS:
+        return jsonify({'error': f'Too many files. Maximum is {MAX_FILES_PER_ANALYSIS}.'}), 400
+
+    folder_name = request.form.get('folder_name', '').strip()
+    if not folder_name:
+        folder_name = f"upload_{uuid.uuid4().hex[:8]}"
+    folder_name = secure_filename(folder_name)
+    if not folder_name:
+        folder_name = f"upload_{uuid.uuid4().hex[:8]}"
+
+    folder_path = os.path.join(DATA_DIR, folder_name)
+    os.makedirs(folder_path, exist_ok=True)
+
+    saved_paths = []
+    for f in valid_files:
+        filename = secure_filename(f.filename)
+        save_path = os.path.join(folder_path, filename)
+        f.save(save_path)
+        saved_paths.append(os.path.relpath(save_path, os.path.dirname(DATA_DIR)))
+
+    folder_rel = os.path.relpath(folder_path, os.path.dirname(DATA_DIR))
+    return jsonify({
+        'folder_path': folder_rel + '/',
+        'files': sorted(saved_paths),
+    }), 200
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # POST /api/analyze/start
 #
 # Runs preprocess → plan → human_review (interrupt).
@@ -104,20 +233,44 @@ def start_analysis():
             return jsonify({"error": "No JSON payload provided"}), 400
 
         user_question = data.get('question')
-        data_path = data.get('filepath', 'data/census/Dataset.csv')
+        filepaths = data.get('filepaths')  # list of paths (multi-file)
+        filepath = data.get('filepath', 'data/census/Dataset.csv')  # single path (backward compat)
 
         if not user_question:
             return jsonify({"error": "Missing 'question' in request body"}), 400
 
-        if not os.path.exists(data_path):
-            return jsonify({"error": f"File not found: '{data_path}'"}), 404
+        # Build data_paths list
+        if filepaths and isinstance(filepaths, list):
+            data_paths = filepaths
+        elif filepath and os.path.isdir(filepath):
+            # Directory path: glob for CSV/JSON files inside
+            data_paths = sorted(
+                os.path.relpath(os.path.join(root, f), os.path.dirname(DATA_DIR))
+                for root, _, files in os.walk(filepath)
+                for f in files
+                if os.path.splitext(f)[1].lower() in ALLOWED_EXTENSIONS
+                and not f.startswith('.')
+            )
+            if not data_paths:
+                return jsonify({"error": f"No CSV/JSON files found in '{filepath}'"}), 400
+        else:
+            data_paths = [filepath]
+
+        if len(data_paths) > MAX_FILES_PER_ANALYSIS:
+            return jsonify({"error": f"Too many files ({len(data_paths)}). Maximum is {MAX_FILES_PER_ANALYSIS}."}), 400
+
+        # Validate all paths exist
+        for dp in data_paths:
+            if not os.path.exists(dp):
+                return jsonify({"error": f"File not found: '{dp}'"}), 404
 
         thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": thread_id}}
 
         initial_state = {
             "question":    user_question,
-            "data_path":   data_path,
+            "data_path":   data_paths[0],
+            "data_paths":  data_paths,
             "retry_count": 0,
             "error":       None,
             "approved":    None,
@@ -217,7 +370,9 @@ def resume_analysis():
 
         sessions[session_id] = {
             "manifest":             final_values.get("manifest"),
+            "manifests":            final_values.get("manifests"),
             "data_path":            final_values.get("data_path", ""),
+            "data_paths":           final_values.get("data_paths"),
             "conversation_history": [
                 {
                     "question":        original_question,
@@ -226,6 +381,7 @@ def resume_analysis():
             ],
             "all_chart_ids": [c.get("id", "") for c in graph_data.get("charts", [])],
         }
+        _save_sessions()
 
         return jsonify({
             "status":          "complete",
@@ -276,7 +432,9 @@ def followup_analysis():
         followup_state = {
             "question":             user_question,
             "data_path":            session["data_path"],
+            "data_paths":           session.get("data_paths") or [session["data_path"]],
             "manifest":             session["manifest"],
+            "manifests":            session.get("manifests") or ([session["manifest"]] if session["manifest"] else []),
             "is_followup":          True,
             "conversation_history": session["conversation_history"],
             "prior_charts":         session["all_chart_ids"],
@@ -308,6 +466,7 @@ def followup_analysis():
 
         # Track new chart IDs
         session["all_chart_ids"].extend(c.get("id", "") for c in new_charts)
+        _save_sessions()
 
         forecast_output = final_values.get("forecast_output", {"forecasts": []})
 

@@ -1,4 +1,5 @@
 import json
+import os
 from langchain_core.messages import SystemMessage, HumanMessage
 from agent_tools.llm_model import model
 
@@ -26,13 +27,17 @@ OUTPUT FORMAT — return only this JSON, no other text:
 
 def create_analysis_plan(user_question: str, manifest: dict,
                          is_followup: bool = False,
-                         conversation_history: list | None = None) -> dict:
+                         conversation_history: list | None = None,
+                         manifests: list | None = None) -> dict:
     """
     Generates a structured checklist of specific pandas analysis steps
     based on the user question and dataset schema.
 
     When is_followup is True, produces a focused 1-2 step plan that avoids
     repeating prior analyses listed in conversation_history.
+
+    When manifests is provided (multi-file), includes all file schemas
+    so the planner can create cross-file analysis steps.
 
     Returns a dict:
     {
@@ -47,6 +52,28 @@ def create_analysis_plan(user_question: str, manifest: dict,
     row_count = manifest.get("row_count", "unknown")
     summary = manifest.get("summary", "")
 
+    # Build dataset schema section — multi-file or single-file
+    if manifests and len(manifests) > 1:
+        schema_lines = []
+        for i, m in enumerate(manifests, 1):
+            name = os.path.basename(m.get("data_path", f"file_{i}"))
+            schema_lines.append(
+                f"FILE {i}: {name}\n"
+                f"  - Columns: {m.get('columns', [])}\n"
+                f"  - Column types: {m.get('dtypes', {})}\n"
+                f"  - Row count: {m.get('row_count', 'unknown')}"
+            )
+        dataset_schema = "Dataset files:\n" + "\n".join(schema_lines)
+        multi_file_rule = "\n- When a step requires data from multiple files, specify which files to load and which columns to join/merge on"
+    else:
+        dataset_schema = (
+            f"Dataset schema:\n"
+            f"- Columns: {columns}\n"
+            f"- Column types: {dtypes}\n"
+            f"- Row count: {row_count}"
+        )
+        multi_file_rule = ""
+
     if is_followup and conversation_history:
         history_text = "\n".join(
             f"  - Q: \"{h['question']}\" → {h.get('summary_snippet', 'completed')}"
@@ -59,29 +86,23 @@ Previous analyses performed:
 
 The user now asks: "{user_question}"
 
-Dataset schema:
-- Columns: {columns}
-- Column types: {dtypes}
-- Row count: {row_count}
+{dataset_schema}
 
 Generate 1 to 2 focused analysis steps that answer ONLY this follow-up question.
 Do NOT repeat any analysis already performed above.
 Rules:
-- Use only column names listed above
+- Use only column names listed above{multi_file_rule}
 - Limit any step aggregating many categories to "top 15 X by Y"
 - Output ONLY the JSON object. No markdown fences, no explanation."""
     else:
         user_msg = f"""User question: "{user_question}"
 
-Dataset schema:
-- Columns: {columns}
-- Column types: {dtypes}
-- Row count: {row_count}
-- Dataset summary: {summary}
+{dataset_schema}
+{f"- Dataset summary: {summary}" if not manifests or len(manifests) <= 1 else ""}
 
 Generate 3 to 6 analysis steps that together fully answer the user question.
 Rules:
-- Use only column names listed above
+- Use only column names listed above{multi_file_rule}
 - Start with the most direct answer, then add supporting context
 - If date/time columns exist, include at least one time-series step
 - If category + numeric columns exist, include at least one ranking/aggregation step

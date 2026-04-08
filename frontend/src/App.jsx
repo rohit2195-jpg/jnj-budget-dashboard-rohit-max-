@@ -5,7 +5,7 @@ import {
   Search, LayoutDashboard, FileText, Loader2, AlertCircle,
   Plus, MessageSquare, Trash2, ClipboardList, CheckCircle, XCircle,
   TrendingUp, TrendingDown, Minus, Sun, Moon, Upload, Database,
-  Send,
+  FolderOpen, Send,
 } from 'lucide-react';
 import './App.css';
 
@@ -172,9 +172,10 @@ function App() {
   // Follow-up state
   const [sessionId, setSessionId]                   = useState(null);
   const [dashboardSections, setDashboardSections]   = useState([]);
-  const [followupQuestion, setFollowupQuestion]     = useState('');
-  const [followupLoading, setFollowupLoading]       = useState(false);
+  const [followupDrafts, setFollowupDrafts]         = useState({});
+  const [loadingFollowupConvId, setLoadingFollowupConvId] = useState(null);
   const followupEndRef = useRef(null);
+  const activeConvIdRef = useRef(null);
 
   const fetchDatasets = async () => {
     try {
@@ -190,19 +191,63 @@ function App() {
   useEffect(() => { fetchDatasets(); }, []);
 
   const handleUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    setUploading(true);
+    try {
+      if (files.length === 1) {
+        // Single file upload — existing endpoint
+        const formData = new FormData();
+        formData.append('file', files[0]);
+        const res = await fetch('http://localhost:5001/api/upload', { method: 'POST', body: formData });
+        const text = await res.text();
+        let json;
+        try { json = JSON.parse(text); } catch { throw new Error('Upload failed — server returned an unexpected response'); }
+        if (!res.ok) throw new Error(json.error || 'Upload failed');
+        await fetchDatasets();
+        setSelectedDataset(json.path);
+      } else {
+        // Multi-file upload — folder endpoint
+        const formData = new FormData();
+        files.forEach(f => formData.append('files', f));
+        const res = await fetch('http://localhost:5001/api/upload-folder', { method: 'POST', body: formData });
+        const text = await res.text();
+        let json;
+        try { json = JSON.parse(text); } catch { throw new Error('Upload failed — server returned an unexpected response'); }
+        if (!res.ok) throw new Error(json.error || 'Upload failed');
+        await fetchDatasets();
+        setSelectedDataset(json.folder_path);
+      }
+    } catch (err) {
+      setError(err.message);
+      setAppState('error');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleFolderUpload = async (e) => {
+    const files = Array.from(e.target.files || []).filter(f => {
+      const ext = f.name.split('.').pop()?.toLowerCase();
+      return ext === 'csv' || ext === 'json';
+    });
+    if (files.length === 0) return;
     setUploading(true);
     try {
       const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('http://localhost:5001/api/upload', { method: 'POST', body: formData });
+      files.forEach(f => formData.append('files', f));
+      // Use the webkitRelativePath to derive folder name
+      const firstPath = files[0].webkitRelativePath || '';
+      const folderName = firstPath.split('/')[0] || '';
+      if (folderName) formData.append('folder_name', folderName);
+      const res = await fetch('http://localhost:5001/api/upload-folder', { method: 'POST', body: formData });
       const text = await res.text();
       let json;
       try { json = JSON.parse(text); } catch { throw new Error('Upload failed — server returned an unexpected response'); }
       if (!res.ok) throw new Error(json.error || 'Upload failed');
       await fetchDatasets();
-      setSelectedDataset(json.path);
+      setSelectedDataset(json.folder_path);
     } catch (err) {
       setError(err.message);
       setAppState('error');
@@ -213,6 +258,10 @@ function App() {
   };
 
   useEffect(() => { saveConversations(conversations); }, [conversations]);
+
+  useEffect(() => {
+    activeConvIdRef.current = activeConvId;
+  }, [activeConvId]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -229,7 +278,6 @@ function App() {
     setThreadId(null); setPendingPlan(null);
     setActiveConvId(null); setAppState('idle');
     setSessionId(null); setDashboardSections([]);
-    setFollowupQuestion('');
   };
 
   const handleLoadConversation = (conv) => {
@@ -249,11 +297,16 @@ function App() {
       }]);
     }
     setSessionId(conv.sessionId || null);
-    setFollowupQuestion('');
   };
 
   const handleDeleteConversation = (id) => {
     setConversations(prev => prev.filter(c => c.id !== id));
+    setFollowupDrafts(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    if (loadingFollowupConvId === id) setLoadingFollowupConvId(null);
     if (activeConvId === id) handleNewChat();
   };
 
@@ -270,7 +323,13 @@ function App() {
       const response = await fetch('http://localhost:5001/api/analyze/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, filepath: selectedDataset || undefined }),
+        body: JSON.stringify({
+          question,
+          // If selected dataset is a folder (ends with /), find its files from datasets list
+          ...(selectedDataset?.endsWith('/')
+            ? { filepaths: datasets.find(d => d.path === selectedDataset)?.files || [] }
+            : { filepath: selectedDataset || undefined }),
+        }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Failed to fetch data from the server');
@@ -333,6 +392,7 @@ function App() {
       data: snapshot, sections, sessionId: snapshot.session_id || null,
     };
     setConversations(prev => [conv, ...prev]);
+    setFollowupDrafts(prev => ({ ...prev, [conv.id]: '' }));
     setActiveConvId(conv.id);
     setDashboardSections(sections);
     setSessionId(snapshot.session_id || null);
@@ -342,43 +402,56 @@ function App() {
   // ── follow-up flow ────────────────────────────────────────────────────
   const handleFollowup = async (e) => {
     e.preventDefault();
-    if (!followupQuestion.trim() || !sessionId || followupLoading) return;
-    setFollowupLoading(true);
+    const sourceConvId = activeConvId;
+    const sourceSessionId = sessionId;
+    const sourceQuestion = (followupDrafts[sourceConvId] || '').trim();
+
+    if (!sourceConvId || !sourceQuestion || !sourceSessionId || loadingFollowupConvId) return;
+    setLoadingFollowupConvId(sourceConvId);
     setError(null);
 
     try {
       const response = await fetch('http://localhost:5001/api/analyze/followup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: followupQuestion, session_id: sessionId }),
+        body: JSON.stringify({ question: sourceQuestion, session_id: sourceSessionId }),
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || 'Follow-up failed');
 
       const newSection = {
         type: 'followup',
-        question: followupQuestion,
+        question: sourceQuestion,
         charts: result.new_charts || [],
         forecasts: result.forecast_output?.forecasts || [],
         explanation: result.explanation,
       };
-      setDashboardSections(prev => {
-        const updated = [...prev, newSection];
-        // Also update the saved conversation
-        setConversations(convs => convs.map(c =>
-          c.id === activeConvId ? { ...c, sections: cloneResult(updated) } : c
-        ));
-        return updated;
-      });
-      setFollowupQuestion('');
+
+      let updatedSections = null;
+      setConversations(convs => convs.map(c => {
+        if (c.id !== sourceConvId) return c;
+        updatedSections = [...(c.sections || []), newSection];
+        return { ...c, sections: cloneResult(updatedSections) };
+      }));
+
+      if (updatedSections && activeConvIdRef.current === sourceConvId) {
+        setDashboardSections(cloneResult(updatedSections));
+      }
+      setFollowupDrafts(prev => ({ ...prev, [sourceConvId]: '' }));
+
       // Auto-scroll to new section
-      setTimeout(() => followupEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      if (activeConvIdRef.current === sourceConvId) {
+        setTimeout(() => followupEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
-      setFollowupLoading(false);
+      setLoadingFollowupConvId(current => (current === sourceConvId ? null : current));
     }
   };
+
+  const activeFollowupQuestion = activeConvId ? (followupDrafts[activeConvId] || '') : '';
+  const followupLoading = loadingFollowupConvId === activeConvId;
 
   const isInputDisabled = loading || appState === 'pending_approval';
 
@@ -415,13 +488,51 @@ function App() {
           >
             {datasets.length === 0 && <option value="">No datasets found</option>}
             {datasets.map(ds => (
-              <option key={ds.path} value={ds.path}>{ds.name} ({(ds.size / 1024).toFixed(0)} KB)</option>
+              <option key={ds.path} value={ds.path}>
+                {ds.type === 'folder'
+                  ? `📁 ${ds.name} (${ds.file_count} files)`
+                  : `${ds.name} (${(ds.size / 1024).toFixed(0)} KB)`}
+              </option>
             ))}
           </select>
-          <label className="upload-btn" title="Upload CSV or JSON">
-            {uploading ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
-            <input type="file" accept=".csv,.json" onChange={handleUpload} hidden disabled={uploading} />
-          </label>
+          <div className="upload-btn-group">
+            <label
+              className="upload-btn upload-btn--file"
+              title="Upload one or more CSV/JSON files"
+              aria-label="Upload files"
+            >
+              {uploading
+                ? <Loader2 size={14} className="animate-spin" />
+                : <Upload size={14} />}
+              <span className="upload-btn-label">Files</span>
+              <input
+                type="file"
+                accept=".csv,.json"
+                multiple
+                onChange={handleUpload}
+                hidden
+                disabled={uploading}
+              />
+            </label>
+            <label
+              className="upload-btn upload-btn--folder"
+              title="Upload an entire folder of CSV/JSON files"
+              aria-label="Upload folder"
+            >
+              {uploading
+                ? <Loader2 size={14} className="animate-spin" />
+                : <FolderOpen size={14} />}
+              <span className="upload-btn-label">Folder</span>
+              <input
+                type="file"
+                webkitdirectory=""
+                directory=""
+                onChange={handleFolderUpload}
+                hidden
+                disabled={uploading}
+              />
+            </label>
+          </div>
         </div>
         <div className="header-actions">
           <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
@@ -692,12 +803,16 @@ function App() {
                     <input
                       type="text"
                       placeholder="Ask a follow-up about this data..."
-                      value={followupQuestion}
-                      onChange={(e) => setFollowupQuestion(e.target.value)}
+                      value={activeFollowupQuestion}
+                      onChange={(e) => {
+                        if (!activeConvId) return;
+                        const value = e.target.value;
+                        setFollowupDrafts(prev => ({ ...prev, [activeConvId]: value }));
+                      }}
                       disabled={followupLoading}
                     />
                   </div>
-                  <button type="submit" disabled={followupLoading || !followupQuestion.trim()}>
+                  <button type="submit" disabled={followupLoading || !activeFollowupQuestion.trim()}>
                     {followupLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
                   </button>
                 </form>
