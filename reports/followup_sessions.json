@@ -1,0 +1,559 @@
+{
+  "bff978cf-3ded-48fa-af01-7a1a42a46884": {
+    "manifest": {
+      "data_path": "pre_processing/processed_data/cleaned_airline_ticket_prices_dataset.json",
+      "source_file": "data/airline_ticket_prices_dataset.csv",
+      "columns": [
+        "Ticket_ID",
+        "Airline",
+        "Origin",
+        "Destination",
+        "Distance_km",
+        "Class",
+        "Days_Before_Departure",
+        "Price_USD"
+      ],
+      "dtypes": {
+        "Ticket_ID": "int64",
+        "Airline": "str",
+        "Origin": "str",
+        "Destination": "str",
+        "Distance_km": "int64",
+        "Class": "str",
+        "Days_Before_Departure": "int64",
+        "Price_USD": "float64"
+      },
+      "row_count": 250,
+      "summary": "The dataset contains 250 rows and 8 columns. The columns include 'Ticket_ID', 'Airline', 'Origin', 'Destination', 'Distance_km', 'Class', 'Days_Before_Departure', and 'Price_USD'. The dataset has been cleaned by removing duplicate and null values, and the data types have been corrected. Categorical columns like 'Airline' and 'Class' are included alongside numerical data such as 'Distance_km' and 'Price_USD'.",
+      "created_at": "2026-03-08T04:02:53.619409",
+      "status": "success",
+      "file_hash": "f8f50ee713d42b499e26ac1a99d411d5"
+    },
+    "manifests": [
+      {
+        "data_path": "pre_processing/processed_data/cleaned_airline_ticket_prices_dataset.json",
+        "source_file": "data/airline_ticket_prices_dataset.csv",
+        "columns": [
+          "Ticket_ID",
+          "Airline",
+          "Origin",
+          "Destination",
+          "Distance_km",
+          "Class",
+          "Days_Before_Departure",
+          "Price_USD"
+        ],
+        "dtypes": {
+          "Ticket_ID": "int64",
+          "Airline": "str",
+          "Origin": "str",
+          "Destination": "str",
+          "Distance_km": "int64",
+          "Class": "str",
+          "Days_Before_Departure": "int64",
+          "Price_USD": "float64"
+        },
+        "row_count": 250,
+        "summary": "The dataset contains 250 rows and 8 columns. The columns include 'Ticket_ID', 'Airline', 'Origin', 'Destination', 'Distance_km', 'Class', 'Days_Before_Departure', and 'Price_USD'. The dataset has been cleaned by removing duplicate and null values, and the data types have been corrected. Categorical columns like 'Airline' and 'Class' are included alongside numerical data such as 'Distance_km' and 'Price_USD'.",
+        "created_at": "2026-03-08T04:02:53.619409",
+        "status": "success",
+        "file_hash": "f8f50ee713d42b499e26ac1a99d411d5"
+      }
+    ],
+    "data_path": "data/airline_ticket_prices_dataset.csv",
+    "data_paths": [
+      "data/airline_ticket_prices_dataset.csv"
+    ],
+    "conversation_history": [
+      {
+        "question": "perform analysis on this dataset please",
+        "summary_snippet": "## Executive Summary\nThis analysis reveals key drivers of airline ticket prices, with flight distance being the most significant factor. The data shows a strong positive correlation of **0.64 correlation coefficient** between distance and price, indicating that longer flights are consistently more e"
+      },
+      {
+        "question": "can you do some analysis on what locations have the most flights or most expensive flights, what locations have the least or least expensive flights",
+        "summary_snippet": "Based on the analysis, Paris is the busiest origin city with **32** flights, while Cairo is the most frequent destination with 36 flights. For ticket prices, Doha is the most expensive city to depart from with an average price of $2,392.06 USD. Conversely, Istanbul is the least expensive origin city"
+      }
+    ],
+    "all_chart_ids": [
+      "Average Price by Airline",
+      "Average Price by Class",
+      "Top 15 Most Expensive Routes (Average Price)",
+      "most_expensive_origins",
+      "most_expensive_destinations",
+      "least_expensive_origins",
+      "least_expensive_destinations",
+      "top_origins_by_volume",
+      "busiest_routes_by_volume",
+      "top_destinations_by_volume",
+      "most_expensive_routes",
+      "least_expensive_routes"
+    ]
+  },
+  "c2626aae-8250-4768-af93-c09878e2f83d": {
+    "manifest": {
+      "data_path": "pre_processing/processed_data/cleaned_cart_events.json",
+      "source_file": "data/upload_4930ba83/cart_events.csv",
+      "columns": [
+        "event_id",
+        "customer_id",
+        "session_id",
+        "timestamp",
+        "event_type",
+        "product_id",
+        "device_type",
+        "traffic_source",
+        "cart_value"
+      ],
+      "dtypes": {
+        "event_id": "str",
+        "customer_id": "str",
+        "session_id": "str",
+        "timestamp": "datetime64[us]",
+        "event_type": "str",
+        "product_id": "str",
+        "device_type": "str",
+        "traffic_source": "str",
+        "cart_value": "float64"
+      },
+      "row_count": 25,
+      "summary": "The dataset contains 25 rows and 9 columns, capturing customer cart events. Key columns include identifiers for events, customers, sessions, and products, along with a timestamp for each interaction. The dataset also details the event type (e.g., \"add_to_cart\"), the device used, the traffic source, and the monetary value of the cart. During pre-processing, missing values were handled, and data types were optimized for analysis.",
+      "created_at": "2026-04-08T20:21:05.700189",
+      "status": "success",
+      "file_hash": "3a4eb9188b04d0c056f1cd30838d9b7c"
+    },
+    "manifests": [
+      {
+        "data_path": "pre_processing/processed_data/cleaned_cart_events.json",
+        "source_file": "data/upload_4930ba83/cart_events.csv",
+        "columns": [
+          "event_id",
+          "customer_id",
+          "session_id",
+          "timestamp",
+          "event_type",
+          "product_id",
+          "device_type",
+          "traffic_source",
+          "cart_value"
+        ],
+        "dtypes": {
+          "event_id": "str",
+          "customer_id": "str",
+          "session_id": "str",
+          "timestamp": "datetime64[us]",
+          "event_type": "str",
+          "product_id": "str",
+          "device_type": "str",
+          "traffic_source": "str",
+          "cart_value": "float64"
+        },
+        "row_count": 25,
+        "summary": "The dataset contains 25 rows and 9 columns, capturing customer cart events. Key columns include identifiers for events, customers, sessions, and products, along with a timestamp for each interaction. The dataset also details the event type (e.g., \"add_to_cart\"), the device used, the traffic source, and the monetary value of the cart. During pre-processing, missing values were handled, and data types were optimized for analysis.",
+        "created_at": "2026-04-08T20:21:05.700189",
+        "status": "success",
+        "file_hash": "3a4eb9188b04d0c056f1cd30838d9b7c"
+      },
+      {
+        "data_path": "pre_processing/processed_data/cleaned_customers.json",
+        "source_file": "data/upload_4930ba83/customers.csv",
+        "columns": [
+          "customer_id",
+          "first_name",
+          "last_name",
+          "email",
+          "phone",
+          "country",
+          "city",
+          "postcode",
+          "created_at",
+          "marketing_opt_in",
+          "customer_segment",
+          "lifetime_value",
+          "repeat_customer"
+        ],
+        "dtypes": {
+          "customer_id": "str",
+          "first_name": "str",
+          "last_name": "str",
+          "email": "str",
+          "phone": "str",
+          "country": "str",
+          "city": "str",
+          "postcode": "str",
+          "created_at": "datetime64[ms]",
+          "marketing_opt_in": "bool",
+          "customer_segment": "str",
+          "lifetime_value": "float64",
+          "repeat_customer": "bool"
+        },
+        "row_count": 25,
+        "summary": "The customer dataset has been successfully pre-processed and cleaned.\n\nThe final dataset contains 25 rows and 13 columns. The columns include `customer_id`, `first_name`, `last_name`, `email`, `phone`, `country`, `city`, `postcode`, `created_at`, `marketing_opt_in`, `customer_segment`, `lifetime_value`, and `repeat_customer`.\n\nKey characteristics and cleaning actions include:\n*   Duplicate customer records were removed.\n*   Rows with missing essential data (customer ID, email) were dropped.\n*   Missing contact and location details were filled with \"Unknown.\"\n*   The `created_at` column was standardized to a datetime format.\n*   Boolean fields (`marketing_opt_in`, `repeat_customer`) and numeric fields (`lifetime_value`) were standardized to their correct data types, with missing values filled appropriately.",
+        "created_at": "2026-04-08T20:21:50.774273",
+        "status": "success",
+        "file_hash": "828eeebf3bb95c602c2d3932afc333a3"
+      },
+      {
+        "data_path": "pre_processing/processed_data/cleaned_inventory_events.json",
+        "source_file": "data/upload_4930ba83/inventory_events.csv",
+        "columns": [
+          "event_id",
+          "product_id",
+          "event_type",
+          "quantity_change",
+          "new_stock_level",
+          "event_date",
+          "notes"
+        ],
+        "dtypes": {
+          "event_id": "str",
+          "product_id": "str",
+          "event_type": "str",
+          "quantity_change": "int64",
+          "new_stock_level": "int64",
+          "event_date": "str",
+          "notes": "str"
+        },
+        "row_count": 25,
+        "summary": "The dataset contains 25 rows and 7 columns. The columns are: `event_id`, `product_id`, `event_type`, `quantity_change`, `new_stock_level`, `event_date`, and `notes`. This dataset appears to be a log of inventory events, tracking changes in stock levels for various products over time. Each event has a unique ID, a product ID, an event type (such as a sale or restocking), the change in quantity, the new stock level, the date of the event, and optional notes.",
+        "created_at": "2026-04-08T20:22:32.128852",
+        "status": "success",
+        "file_hash": "502f424864554193148a74ff986a0f4b"
+      },
+      {
+        "data_path": "pre_processing/processed_data/cleaned_order_items.json",
+        "source_file": "data/upload_4930ba83/order_items.csv",
+        "columns": [
+          "order_item_id",
+          "order_id",
+          "product_id",
+          "quantity",
+          "unit_price",
+          "line_total"
+        ],
+        "dtypes": {
+          "order_item_id": "str",
+          "order_id": "str",
+          "product_id": "str",
+          "quantity": "int64",
+          "unit_price": "float64",
+          "line_total": "float64"
+        },
+        "row_count": 25,
+        "summary": "The dataset has been successfully pre-processed.\n\nThe cleaned dataset contains 25 rows and 6 columns. The columns are `order_item_id`, `order_id`, `product_id`, `quantity`, `unit_price`, and `line_total`.\n\nThe pre-processing involved removing duplicate entries and ensuring that the numeric fields (`quantity`, `unit_price`, `line_total`) were correctly formatted, with any invalid rows being dropped.",
+        "created_at": "2026-04-08T20:23:05.849545",
+        "status": "success",
+        "file_hash": "6fe5052109a7d5a24196e82e2da3c3a7"
+      },
+      {
+        "data_path": "pre_processing/processed_data/cleaned_orders.json",
+        "source_file": "data/upload_4930ba83/orders.csv",
+        "columns": [
+          "order_id",
+          "customer_id",
+          "order_date",
+          "order_status",
+          "payment_status",
+          "payment_method",
+          "currency",
+          "subtotal",
+          "discount_amount",
+          "tax_amount",
+          "shipping_amount",
+          "total_amount",
+          "shipping_country",
+          "shipping_city",
+          "shipping_postcode",
+          "device_type",
+          "traffic_source"
+        ],
+        "dtypes": {
+          "order_id": "str",
+          "customer_id": "str",
+          "order_date": "int64",
+          "order_status": "str",
+          "payment_status": "str",
+          "payment_method": "str",
+          "currency": "str",
+          "subtotal": "float64",
+          "discount_amount": "float64",
+          "tax_amount": "float64",
+          "shipping_amount": "float64",
+          "total_amount": "float64",
+          "shipping_country": "str",
+          "shipping_city": "str",
+          "shipping_postcode": "str",
+          "device_type": "str",
+          "traffic_source": "str"
+        },
+        "row_count": 25,
+        "summary": "The dataset contains 25 rows and 17 columns, including: `order_id`, `customer_id`, `order_date`, `order_status`, `payment_status`, `payment_method`, `currency`, `subtotal`, `discount_amount`, `tax_amount`, `shipping_amount`, `total_amount`, `shipping_country`, `shipping_city`, `shipping_postcode`, `device_type`, and `traffic_source`.\n\nNotable characteristics:\n*   The dataset captures transactional data, with each row representing a unique order.\n*   It includes a mix of identifier, timestamp, categorical, and numerical data.\n*   Key financial metrics like subtotal, discounts, taxes, and total amount are included.\n*   Customer and shipping information provides geographical and logistical context.\n*   Device type and traffic source offer insights into customer behavior and marketing channels.",
+        "created_at": "2026-04-08T20:24:35.167909",
+        "status": "success",
+        "file_hash": "2e7a0371aae5fbd0ecefa5465269a480"
+      },
+      {
+        "data_path": "pre_processing/processed_data/cleaned_products.json",
+        "source_file": "data/upload_4930ba83/products.csv",
+        "columns": [
+          "product_id",
+          "sku",
+          "product_name",
+          "category",
+          "subcategory",
+          "brand",
+          "price",
+          "cost",
+          "stock_quantity",
+          "active",
+          "created_at"
+        ],
+        "dtypes": {
+          "product_id": "str",
+          "sku": "str",
+          "product_name": "str",
+          "category": "str",
+          "subcategory": "str",
+          "brand": "str",
+          "price": "float64",
+          "cost": "float64",
+          "stock_quantity": "int64",
+          "active": "bool",
+          "created_at": "datetime64[us]"
+        },
+        "row_count": 25,
+        "summary": "The dataset has been pre-processed, resulting in a cleaned dataset with 25 rows and 11 columns.\n\nThe columns in the cleaned dataset are:\n`product_id`, `sku`, `product_name`, `category`, `subcategory`, `brand`, `price`, `cost`, `stock_quantity`, `active`, and `created_at`.\n\nThis structured data includes unique product identifiers, detailed descriptions, pricing and cost information, stock levels, and creation timestamps, making it suitable for further analysis.",
+        "created_at": "2026-04-08T20:25:41.291465",
+        "status": "success",
+        "file_hash": "35bc4add6e4a102a2adcf3ae55951cc1"
+      },
+      {
+        "data_path": "pre_processing/processed_data/cleaned_promotions.json",
+        "source_file": "data/upload_4930ba83/promotions.csv",
+        "columns": [
+          "promo_id",
+          "code",
+          "discount_type",
+          "discount_value",
+          "min_order_value",
+          "start_date",
+          "end_date",
+          "times_used",
+          "max_uses",
+          "active"
+        ],
+        "dtypes": {
+          "promo_id": "str",
+          "code": "str",
+          "discount_type": "str",
+          "discount_value": "int64",
+          "min_order_value": "int64",
+          "start_date": "str",
+          "end_date": "str",
+          "times_used": "int64",
+          "max_uses": "int64",
+          "active": "bool"
+        },
+        "row_count": 10,
+        "summary": "The dataset has been pre-processed, resulting in a cleaned dataset with 10 rows and 10 columns.\n\nThe columns in the cleaned dataset are:\n`promo_id`, `code`, `discount_type`, `discount_value`, `min_order_value`, `start_date`, `end_date`, `times_used`, `max_uses`, and `active`.\n\nThis dataset contains information about various promotions, including unique identifiers, promotion codes, discount types and values, minimum order requirements, validity dates, and usage statistics.",
+        "created_at": "2026-04-08T20:26:24.312907",
+        "status": "success",
+        "file_hash": "2c6f7b96f7afa2e0cf5592faa0628a9d"
+      },
+      {
+        "data_path": "pre_processing/processed_data/cleaned_refunds.json",
+        "source_file": "data/upload_4930ba83/refunds.csv",
+        "columns": [
+          "refund_id",
+          "order_id",
+          "refund_date",
+          "refund_reason",
+          "refund_amount",
+          "refund_status"
+        ],
+        "dtypes": {
+          "refund_id": "str",
+          "order_id": "str",
+          "refund_date": "str",
+          "refund_reason": "str",
+          "refund_amount": "float64",
+          "refund_status": "str"
+        },
+        "row_count": 25,
+        "summary": "The dataset contains 25 rows and 6 columns.\n\n### Columns:\n- **refund_id**: Unique identifier for each refund.\n- **order_id**: Identifier for the original order.\n- **refund_date**: Date and time of the refund.\n- **refund_reason**: Reason for the refund.\n- **refund_amount**: The amount refunded.\n- **refund_status**: The status of the refund.\n\n### Notable Characteristics:\n- The dataset has been cleaned to remove duplicate entries.\n- Data types have been standardized: `refund_date` is a datetime object, `refund_amount` is a numeric type, and the rest are strings.\n- Missing values in `refund_reason` and `refund_status` have been filled with \"unknown\".\n- Rows with missing key identifiers (`refund_id`, `order_id`), `refund_date`, or `refund_amount` have been removed.",
+        "created_at": "2026-04-08T20:27:18.148855",
+        "status": "success",
+        "file_hash": "6e452f38ae317c331f068f9ae9b00cef"
+      },
+      {
+        "data_path": "pre_processing/processed_data/cleaned_reviews.json",
+        "source_file": "data/upload_4930ba83/reviews.csv",
+        "columns": [
+          "review_id",
+          "order_id",
+          "customer_id",
+          "product_id",
+          "rating",
+          "title",
+          "body",
+          "review_date",
+          "verified_purchase",
+          "helpful_votes",
+          "reported"
+        ],
+        "dtypes": {
+          "review_id": "str",
+          "order_id": "str",
+          "customer_id": "str",
+          "product_id": "str",
+          "rating": "int64",
+          "title": "str",
+          "body": "str",
+          "review_date": "int64",
+          "verified_purchase": "bool",
+          "helpful_votes": "int64",
+          "reported": "bool"
+        },
+        "row_count": 25,
+        "summary": "The dataset has been successfully pre-processed. Here is a brief overview of the cleaned dataset:\n\n**Shape:** 25 rows and 11 columns.\n\n**Columns:** `review_id`, `order_id`, `customer_id`, `product_id`, `rating`, `title`, `body`, `review_date`, `verified_purchase`, `helpful_votes`, and `reported`.\n\n**Notable Characteristics:**\n*   The dataset contains customer reviews with ratings, review text, and other metadata.\n*   The `review_date` column is in datetime format.\n*   `rating` and `helpful_votes` are integer-based numeric columns.\n*   `verified_purchase` and `reported` are boolean fields.\n*   The dataset has been cleaned to remove duplicate entries and rows with missing essential information. Text fields with missing values have been replaced with empty strings. Data types have been standardized across all columns.",
+        "created_at": "2026-04-08T20:28:20.987490",
+        "status": "success",
+        "file_hash": "27fd259bb228117b011663f2f9cde488"
+      },
+      {
+        "data_path": "pre_processing/processed_data/cleaned_sessions.json",
+        "source_file": "data/upload_4930ba83/sessions.csv",
+        "columns": [
+          "session_id",
+          "customer_id",
+          "session_start",
+          "session_end",
+          "device_type",
+          "traffic_source",
+          "landing_page",
+          "page_views",
+          "bounce",
+          "converted",
+          "duration_seconds"
+        ],
+        "dtypes": {
+          "session_id": "str",
+          "customer_id": "str",
+          "session_start": "str",
+          "session_end": "str",
+          "device_type": "str",
+          "traffic_source": "str",
+          "landing_page": "str",
+          "page_views": "int64",
+          "bounce": "bool",
+          "converted": "bool",
+          "duration_seconds": "int64"
+        },
+        "row_count": 25,
+        "summary": "The dataset contains 25 rows and 11 columns.\n\nColumns:\n*   `session_id`: Unique identifier for each session.\n*   `customer_id`: Identifier for the customer.\n*   `session_start`: Timestamp for the beginning of the session.\n*   `session_end`: Timestamp for the end of the session.\n*   `device_type`: The type of device used (e.g., mobile, desktop).\n*   `traffic_source`: The source of the traffic (e.g., direct, search).\n*   `landing_page`: The first page viewed in the session.\n*   `page_views`: The number of pages viewed during the session.\n*   `bounce`: A boolean indicating if the session was a bounce.\n*   `converted`: A boolean indicating if the session resulted in a conversion.\n*   `duration_seconds`: The duration of the session in seconds.\n\nNotable Characteristics:\nThe dataset is a small, clean collection of user session data. It includes a mix of identifier, timestamp, categorical, and numerical data types, suitable for analyzing user behavior and session performance. The pre-processing has handled missing values and ensured data type consistency.",
+        "created_at": "2026-04-08T20:29:28.132572",
+        "status": "success",
+        "file_hash": "b000c30adf3e1b91d50991340455fb42"
+      }
+    ],
+    "data_path": "data/upload_4930ba83/cart_events.csv",
+    "data_paths": [
+      "data/upload_4930ba83/cart_events.csv",
+      "data/upload_4930ba83/customers.csv",
+      "data/upload_4930ba83/inventory_events.csv",
+      "data/upload_4930ba83/order_items.csv",
+      "data/upload_4930ba83/orders.csv",
+      "data/upload_4930ba83/products.csv",
+      "data/upload_4930ba83/promotions.csv",
+      "data/upload_4930ba83/refunds.csv",
+      "data/upload_4930ba83/reviews.csv",
+      "data/upload_4930ba83/sessions.csv"
+    ],
+    "conversation_history": [
+      {
+        "question": "Analyse this dataset for me and get insights",
+        "summary_snippet": "# Sales Performance Analysis\n\n## Executive Summary\nThis report summarizes sales performance, highlighting key trends and traffic drivers. Organic search is the most significant traffic source, generating **$5,649.38 USD** in total sales. Monthly sales show high variability, peaking at $4,209.69 USD "
+      }
+    ],
+    "all_chart_ids": [
+      "Monthly Sales Trend",
+      "Sales and Order Count by Traffic Source"
+    ]
+  },
+  "9ef331c7-0ae8-4f98-888a-134d9b29ae08": {
+    "manifest": {
+      "data_path": "pre_processing/processed_data/cleaned_airline_ticket_prices_dataset.json",
+      "source_file": "data/airline_ticket_prices_dataset.csv",
+      "columns": [
+        "Ticket_ID",
+        "Airline",
+        "Origin",
+        "Destination",
+        "Distance_km",
+        "Class",
+        "Days_Before_Departure",
+        "Price_USD"
+      ],
+      "dtypes": {
+        "Ticket_ID": "int64",
+        "Airline": "str",
+        "Origin": "str",
+        "Destination": "str",
+        "Distance_km": "int64",
+        "Class": "str",
+        "Days_Before_Departure": "int64",
+        "Price_USD": "float64"
+      },
+      "row_count": 250,
+      "summary": "The dataset contains 250 rows and 8 columns. The columns include 'Ticket_ID', 'Airline', 'Origin', 'Destination', 'Distance_km', 'Class', 'Days_Before_Departure', and 'Price_USD'. The dataset has been cleaned by removing duplicate and null values, and the data types have been corrected. Categorical columns like 'Airline' and 'Class' are included alongside numerical data such as 'Distance_km' and 'Price_USD'.",
+      "created_at": "2026-03-08T04:02:53.619409",
+      "status": "success",
+      "file_hash": "f8f50ee713d42b499e26ac1a99d411d5"
+    },
+    "manifests": [
+      {
+        "data_path": "pre_processing/processed_data/cleaned_airline_ticket_prices_dataset.json",
+        "source_file": "data/airline_ticket_prices_dataset.csv",
+        "columns": [
+          "Ticket_ID",
+          "Airline",
+          "Origin",
+          "Destination",
+          "Distance_km",
+          "Class",
+          "Days_Before_Departure",
+          "Price_USD"
+        ],
+        "dtypes": {
+          "Ticket_ID": "int64",
+          "Airline": "str",
+          "Origin": "str",
+          "Destination": "str",
+          "Distance_km": "int64",
+          "Class": "str",
+          "Days_Before_Departure": "int64",
+          "Price_USD": "float64"
+        },
+        "row_count": 250,
+        "summary": "The dataset contains 250 rows and 8 columns. The columns include 'Ticket_ID', 'Airline', 'Origin', 'Destination', 'Distance_km', 'Class', 'Days_Before_Departure', and 'Price_USD'. The dataset has been cleaned by removing duplicate and null values, and the data types have been corrected. Categorical columns like 'Airline' and 'Class' are included alongside numerical data such as 'Distance_km' and 'Price_USD'.",
+        "created_at": "2026-03-08T04:02:53.619409",
+        "status": "success",
+        "file_hash": "f8f50ee713d42b499e26ac1a99d411d5"
+      }
+    ],
+    "data_path": "data/airline_ticket_prices_dataset.csv",
+    "data_paths": [
+      "data/airline_ticket_prices_dataset.csv"
+    ],
+    "conversation_history": [
+      {
+        "question": "How much was spent on education in 2023?",
+        "summary_snippet": "# Executive Summary\nThis analysis focuses on flight expenditures, as the available dataset does not contain information about education spending or specific dates required to filter for 2023. The total flight expenditure captured in the data is **$501,514.94 USD**. Analysis of ticket classes reveals"
+      }
+    ],
+    "all_chart_ids": [
+      "Top 15 Airlines by Total Spending",
+      "Spending Summary by Ticket Class",
+      "Average Price by Days Before Departure"
+    ]
+  }
+}

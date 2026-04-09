@@ -1,0 +1,25 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_order_items.json",
+  "source_file": "data/upload_4930ba83/order_items.csv",
+  "columns": [
+    "order_item_id",
+    "order_id",
+    "product_id",
+    "quantity",
+    "unit_price",
+    "line_total"
+  ],
+  "dtypes": {
+    "order_item_id": "str",
+    "order_id": "str",
+    "product_id": "str",
+    "quantity": "int64",
+    "unit_price": "float64",
+    "line_total": "float64"
+  },
+  "row_count": 25,
+  "summary": "The dataset has been successfully pre-processed.\n\nThe cleaned dataset contains 25 rows and 6 columns. The columns are `order_item_id`, `order_id`, `product_id`, `quantity`, `unit_price`, and `line_total`.\n\nThe pre-processing involved removing duplicate entries and ensuring that the numeric fields (`quantity`, `unit_price`, `line_total`) were correctly formatted, with any invalid rows being dropped.",
+  "created_at": "2026-04-08T20:23:05.849545",
+  "status": "success",
+  "file_hash": "6fe5052109a7d5a24196e82e2da3c3a7"
+}

@@ -1,0 +1,20 @@
+## Executive Summary
+This analysis reveals key drivers of flight ticket prices, with travel class and booking time being the most significant factors. First Class tickets average **$3,048.61 USD**, nearly triple the cost of Economy. Booking within two weeks of departure is the most expensive window, averaging $2,806.65 USD, while booking more than 60 days in advance offers the lowest average price at $1,506.96 USD.
+
+### Average Price by Airline
+Analysis of average ticket prices across major airlines shows a wide range of pricing. Saudia is the most expensive airline with an average price of **$2,389.40 USD**. The next most expensive are Turkish Airlines at $2,140.44 USD and Emirates at $2,103.24 USD. The least expensive airline in this comparison is Etihad, with an average ticket price of $1,486.47 USD.
+
+### Average Price by Travel Class
+Travel class is a primary determinant of ticket price. First Class tickets are the most expensive, with an average cost of **$3,048.61 USD**. Business Class is the next tier at $1,939.81 USD, while Economy Class is the most affordable option, averaging $1,054.49 USD.
+
+### Average Price vs. Days Before Departure
+The timing of a ticket purchase has a substantial impact on its price. Booking a flight 0-14 days before departure is the most expensive period, with an average price of **$2,806.65 USD**. The lowest average price is found when booking 61+ days in advance, at $1,506.96 USD, representing a potential savings of over $1,300 USD.
+
+### Top 15 Most Expensive Routes by Average Price
+The most expensive flight route is London to Mumbai, with an average ticket price of **$5,576.32 USD**. The next two most expensive routes are New York to Doha at $5,393.52 USD and Paris to Mumbai at $5,367.82 USD. Of the top 15 routes, the least expensive is Doha to London, with an average price of $2,763.31 USD.
+
+### Correlation between Distance and Price
+There is a moderately strong positive correlation between flight distance and ticket price. The analysis found a Pearson correlation of **0.64 coefficient**. This indicates that as the flight distance increases, the ticket price also tends to increase.
+
+## Additional Insights
+The data consistently shows that premium services and last-minute bookings command the highest prices. The average First Class ticket ($3,048.61 USD) is **2.89 times more expensive** than an Economy ticket ($1,054.49 USD). Similarly, booking a flight within two weeks of departure ($2,806.65 USD) is 86% more expensive than booking over two months in advance ($1,506.96 USD). The strong positive correlation of 0.64 coefficient between distance and price further solidifies that longer routes contribute significantly to higher costs.

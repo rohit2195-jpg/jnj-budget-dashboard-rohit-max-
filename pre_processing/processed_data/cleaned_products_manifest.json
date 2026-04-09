@@ -1,0 +1,35 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_products.json",
+  "source_file": "data/upload_4930ba83/products.csv",
+  "columns": [
+    "product_id",
+    "sku",
+    "product_name",
+    "category",
+    "subcategory",
+    "brand",
+    "price",
+    "cost",
+    "stock_quantity",
+    "active",
+    "created_at"
+  ],
+  "dtypes": {
+    "product_id": "str",
+    "sku": "str",
+    "product_name": "str",
+    "category": "str",
+    "subcategory": "str",
+    "brand": "str",
+    "price": "float64",
+    "cost": "float64",
+    "stock_quantity": "int64",
+    "active": "bool",
+    "created_at": "datetime64[us]"
+  },
+  "row_count": 25,
+  "summary": "The dataset has been pre-processed, resulting in a cleaned dataset with 25 rows and 11 columns.\n\nThe columns in the cleaned dataset are:\n`product_id`, `sku`, `product_name`, `category`, `subcategory`, `brand`, `price`, `cost`, `stock_quantity`, `active`, and `created_at`.\n\nThis structured data includes unique product identifiers, detailed descriptions, pricing and cost information, stock levels, and creation timestamps, making it suitable for further analysis.",
+  "created_at": "2026-04-08T20:25:41.291465",
+  "status": "success",
+  "file_hash": "35bc4add6e4a102a2adcf3ae55951cc1"
+}

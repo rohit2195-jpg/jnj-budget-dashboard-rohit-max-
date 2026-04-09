@@ -1,0 +1,33 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_promotions.json",
+  "source_file": "data/upload_4930ba83/promotions.csv",
+  "columns": [
+    "promo_id",
+    "code",
+    "discount_type",
+    "discount_value",
+    "min_order_value",
+    "start_date",
+    "end_date",
+    "times_used",
+    "max_uses",
+    "active"
+  ],
+  "dtypes": {
+    "promo_id": "str",
+    "code": "str",
+    "discount_type": "str",
+    "discount_value": "int64",
+    "min_order_value": "int64",
+    "start_date": "str",
+    "end_date": "str",
+    "times_used": "int64",
+    "max_uses": "int64",
+    "active": "bool"
+  },
+  "row_count": 10,
+  "summary": "The dataset has been pre-processed, resulting in a cleaned dataset with 10 rows and 10 columns.\n\nThe columns in the cleaned dataset are:\n`promo_id`, `code`, `discount_type`, `discount_value`, `min_order_value`, `start_date`, `end_date`, `times_used`, `max_uses`, and `active`.\n\nThis dataset contains information about various promotions, including unique identifiers, promotion codes, discount types and values, minimum order requirements, validity dates, and usage statistics.",
+  "created_at": "2026-04-08T20:26:24.312907",
+  "status": "success",
+  "file_hash": "2c6f7b96f7afa2e0cf5592faa0628a9d"
+}

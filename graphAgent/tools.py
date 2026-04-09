@@ -8,9 +8,9 @@ from typing import List
 _graph_registry: list = []
 
 COLOR_PALETTE = [
-    "#6366F1", "#22C55E", "#F59E0B", "#EF4444", "#3B82F6",
-    "#A855F7", "#14B8A6", "#F97316", "#EC4899", "#84CC16",
-    "#06B6D4", "#8B5CF6", "#10B981", "#F43F5E", "#64748B",
+    "#D51130", "#2563EB", "#F59E0B", "#16A34A", "#7C3AED",
+    "#E8465A", "#0EA5E9", "#F97316", "#6366F1", "#14B8A6",
+    "#EC4899", "#84CC16", "#06B6D4", "#8B5CF6", "#64748B",
 ]
 
 
@@ -26,6 +26,11 @@ def _cap_series(categories, values, n=15):
     top_vals.append(other_val)
     top_cats.append("Other")
     return top_cats, top_vals
+
+def _round_values(values):
+    """Round float values to 2 decimal places for clean chart display."""
+    return [round(v, 2) if isinstance(v, (int, float)) else v for v in values]
+
 
 def reset_graph_registry():
     _graph_registry.clear()
@@ -64,7 +69,7 @@ Parameters:
 Best for: Time series analysis, trend detection, forecasting signals.
 """
     categories = list(categories)[:50]
-    values = list(values)[:50]
+    values = _round_values(list(values)[:50])
     _append_chart({
         "id": chart_id,
         "title": title,
@@ -118,6 +123,7 @@ Parameters:
 Best for: Category comparison, rankings, top 10 lists.
 """
     categories, values = _cap_series(categories, values, n=15)
+    values = _round_values(values)
     _append_chart({
         "id": chart_id,
         "title": title,
@@ -182,6 +188,7 @@ Best for: Market share, budget allocation, distribution analysis.
 Avoid if too many categories.
 """
     labels, values = _cap_series(labels, values, n=6)
+    values = _round_values(values)
     _append_chart({
         "id": chart_id,
         "title": title,
@@ -226,6 +233,7 @@ Parameters:
 Best for: Top 10 rankings, company comparisons, long names.
 """
     categories, values = _cap_series(categories, values, n=15)
+    values = _round_values(values)
     _append_chart({
         "id": chart_id,
         "title": title,
@@ -296,7 +304,9 @@ Best for: Revenue breakdowns, budget segments, multi-group comparisons.
     cap = 15
     if len(categories) > cap:
         categories = list(categories)[:cap]
-        series = [{"name": s["name"], "data": list(s["data"])[:cap]} for s in series]
+        series = [{"name": s["name"], "data": _round_values(list(s["data"])[:cap])} for s in series]
+    else:
+        series = [{"name": s["name"], "data": _round_values(list(s["data"]))} for s in series]
     _append_chart({
         "id": chart_id,
         "title": title,
@@ -355,7 +365,7 @@ Parameters:
 Best for: Growth trends, cumulative values, volume over time.
 """
     categories = list(categories)[:50]
-    values = list(values)[:50]
+    values = _round_values(list(values)[:50])
     _append_chart({
         "id": chart_id,
         "title": title,
@@ -407,6 +417,8 @@ Parameters:
 
 Best for: Correlation analysis, regression exploration, anomaly detection.
 """
+    data = [[round(x, 2) if isinstance(x, (int, float)) else x,
+             round(y, 2) if isinstance(y, (int, float)) else y] for x, y in data]
     _append_chart({
         "id": chart_id,
         "title": title,
@@ -464,7 +476,7 @@ Best for: Activity frequency, performance matrices, time vs category analysis.
             "chart": {
                 "toolbar": {"show": False}
             },
-            "colors": ["#008FFB"],
+            "colors": ["#D51130"],
             "dataLabels": {
                 "enabled": False
             }
@@ -504,7 +516,7 @@ Best for: Performance evaluation, skill comparison, multi-metric scoring.
         "type": "radar",
         "series": [{
             "name": series_name,
-            "data": values
+            "data": _round_values(list(values))
         }],
         "options": {
             "chart": {
@@ -555,12 +567,12 @@ Best for: Revenue vs growth rate, volume vs percentage, dual-axis insights.
             {
                 "name": bar_series_name,
                 "type": "column",
-                "data": bar_values
+                "data": _round_values(list(bar_values))
             },
             {
                 "name": line_series_name,
                 "type": "line",
-                "data": line_values
+                "data": _round_values(list(line_values))
             }
         ],
         "options": {
@@ -614,11 +626,11 @@ Best for: Time-series forecasting, trend projection, budget planning.
     n_hist = len(historical_categories)
 
     # Historical series: real values, then null for projected range
-    hist_data = list(historical_values) + [None] * len(projected_categories)
+    hist_data = _round_values(list(historical_values)) + [None] * len(projected_categories)
     # Projected series: null for historical range, then projected values
-    proj_data = [None] * n_hist + list(projected_values)
-    lower_data = [None] * n_hist + list(lower_bound)
-    upper_data = [None] * n_hist + list(upper_bound)
+    proj_data = [None] * n_hist + _round_values(list(projected_values))
+    lower_data = [None] * n_hist + _round_values(list(lower_bound))
+    upper_data = [None] * n_hist + _round_values(list(upper_bound))
 
     # Boundary annotation: vertical line between last historical and first projected
     boundary_x = historical_categories[-1] if historical_categories else None

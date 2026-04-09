@@ -1,0 +1,35 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_sessions.json",
+  "source_file": "data/upload_4930ba83/sessions.csv",
+  "columns": [
+    "session_id",
+    "customer_id",
+    "session_start",
+    "session_end",
+    "device_type",
+    "traffic_source",
+    "landing_page",
+    "page_views",
+    "bounce",
+    "converted",
+    "duration_seconds"
+  ],
+  "dtypes": {
+    "session_id": "str",
+    "customer_id": "str",
+    "session_start": "str",
+    "session_end": "str",
+    "device_type": "str",
+    "traffic_source": "str",
+    "landing_page": "str",
+    "page_views": "int64",
+    "bounce": "bool",
+    "converted": "bool",
+    "duration_seconds": "int64"
+  },
+  "row_count": 25,
+  "summary": "The dataset contains 25 rows and 11 columns.\n\nColumns:\n*   `session_id`: Unique identifier for each session.\n*   `customer_id`: Identifier for the customer.\n*   `session_start`: Timestamp for the beginning of the session.\n*   `session_end`: Timestamp for the end of the session.\n*   `device_type`: The type of device used (e.g., mobile, desktop).\n*   `traffic_source`: The source of the traffic (e.g., direct, search).\n*   `landing_page`: The first page viewed in the session.\n*   `page_views`: The number of pages viewed during the session.\n*   `bounce`: A boolean indicating if the session was a bounce.\n*   `converted`: A boolean indicating if the session resulted in a conversion.\n*   `duration_seconds`: The duration of the session in seconds.\n\nNotable Characteristics:\nThe dataset is a small, clean collection of user session data. It includes a mix of identifier, timestamp, categorical, and numerical data types, suitable for analyzing user behavior and session performance. The pre-processing has handled missing values and ensured data type consistency.",
+  "created_at": "2026-04-08T20:29:28.132572",
+  "status": "success",
+  "file_hash": "b000c30adf3e1b91d50991340455fb42"
+}

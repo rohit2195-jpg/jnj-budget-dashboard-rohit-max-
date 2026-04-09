@@ -1,5 +1,6 @@
 from __future__ import annotations
 import json
+import math
 from typing import Optional, Union
 from typing_extensions import TypedDict
 
@@ -50,10 +51,31 @@ def get_all_manifests(state: "PipelineState") -> list:
     return []
 
 
+class _CleanEncoder(json.JSONEncoder):
+    """Round floats to 2 decimal places during JSON serialization."""
+    def default(self, obj):
+        return str(obj)
+
+    def encode(self, o):
+        return super().encode(self._round_floats(o))
+
+    def _round_floats(self, obj):
+        if isinstance(obj, float):
+            if math.isnan(obj) or math.isinf(obj):
+                return None
+            return round(obj, 2)
+        if isinstance(obj, dict):
+            return {k: self._round_floats(v) for k, v in obj.items()}
+        if isinstance(obj, (list, tuple)):
+            return [self._round_floats(v) for v in obj]
+        return obj
+
+
 def serialize_analysis_output(analysis_output) -> str:
     """Serialize analysis_output to a string for downstream LLM agents."""
     if analysis_output is None:
         return ""
     if isinstance(analysis_output, dict):
-        return json.dumps(analysis_output, indent=2, default=str)
+        cleaned = _CleanEncoder()._round_floats(analysis_output)
+        return json.dumps(cleaned, indent=2, default=str)
     return str(analysis_output)

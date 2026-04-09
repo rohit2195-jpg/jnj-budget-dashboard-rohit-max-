@@ -1,0 +1,227 @@
+[
+  {
+    "event_id":"INV_00000001",
+    "product_id":"PRD_00009912",
+    "event_type":"sale_deduction",
+    "quantity_change":-3,
+    "new_stock_level":125,
+    "event_date":"2023-12-04T08:58:59.000",
+    "notes":"Customer order fulfilled"
+  },
+  {
+    "event_id":"INV_00000002",
+    "product_id":"PRD_00009717",
+    "event_type":"sale_deduction",
+    "quantity_change":-5,
+    "new_stock_level":189,
+    "event_date":"2024-12-25T03:21:06.000",
+    "notes":"Customer order fulfilled"
+  },
+  {
+    "event_id":"INV_00000003",
+    "product_id":"PRD_00003161",
+    "event_type":"sale_deduction",
+    "quantity_change":-5,
+    "new_stock_level":133,
+    "event_date":"2024-11-01T07:55:11.000",
+    "notes":"Customer order fulfilled"
+  },
+  {
+    "event_id":"INV_00000004",
+    "product_id":"PRD_00009284",
+    "event_type":"sale_deduction",
+    "quantity_change":-1,
+    "new_stock_level":173,
+    "event_date":"2023-01-16T09:19:42.000",
+    "notes":"Customer order fulfilled"
+  },
+  {
+    "event_id":"INV_00000005",
+    "product_id":"PRD_00000909",
+    "event_type":"sale_deduction",
+    "quantity_change":-4,
+    "new_stock_level":85,
+    "event_date":"2023-07-25T11:58:03.000",
+    "notes":"Customer order fulfilled"
+  },
+  {
+    "event_id":"INV_00000006",
+    "product_id":"PRD_00000955",
+    "event_type":"sale_deduction",
+    "quantity_change":-1,
+    "new_stock_level":27,
+    "event_date":"2023-05-20T12:29:07.000",
+    "notes":"Customer order fulfilled"
+  },
+  {
+    "event_id":"INV_00000007",
+    "product_id":"PRD_00004089",
+    "event_type":"sale_deduction",
+    "quantity_change":-4,
+    "new_stock_level":44,
+    "event_date":"2023-02-03T12:53:45.000",
+    "notes":"Customer order fulfilled"
+  },
+  {
+    "event_id":"INV_00000008",
+    "product_id":"PRD_00001554",
+    "event_type":"restock",
+    "quantity_change":170,
+    "new_stock_level":428,
+    "event_date":"2024-07-04T12:16:11.000",
+    "notes":"Emergency restock due to high demand"
+  },
+  {
+    "event_id":"INV_00000009",
+    "product_id":"PRD_00003129",
+    "event_type":"restock",
+    "quantity_change":97,
+    "new_stock_level":218,
+    "event_date":"2024-08-18T12:46:27.000",
+    "notes":"Warehouse transfer in"
+  },
+  {
+    "event_id":"INV_00000010",
+    "product_id":"PRD_00001062",
+    "event_type":"adjustment",
+    "quantity_change":-4,
+    "new_stock_level":170,
+    "event_date":"2024-07-02T06:07:52.000",
+    "notes":"Stock count correction"
+  },
+  {
+    "event_id":"INV_00000011",
+    "product_id":"PRD_00000062",
+    "event_type":"sale_deduction",
+    "quantity_change":-2,
+    "new_stock_level":142,
+    "event_date":"2024-05-19T07:50:43.000",
+    "notes":"Customer order fulfilled"
+  },
+  {
+    "event_id":"INV_00000012",
+    "product_id":"PRD_00001249",
+    "event_type":"sale_deduction",
+    "quantity_change":-5,
+    "new_stock_level":57,
+    "event_date":"2024-05-31T23:47:13.000",
+    "notes":"Customer order fulfilled"
+  },
+  {
+    "event_id":"INV_00000013",
+    "product_id":"PRD_00009226",
+    "event_type":"restock",
+    "quantity_change":186,
+    "new_stock_level":384,
+    "event_date":"2023-08-15T09:33:52.000",
+    "notes":"Supplier delivery received"
+  },
+  {
+    "event_id":"INV_00000014",
+    "product_id":"PRD_00000710",
+    "event_type":"sale_deduction",
+    "quantity_change":-1,
+    "new_stock_level":134,
+    "event_date":"2025-06-08T06:06:38.000",
+    "notes":"Customer order fulfilled"
+  },
+  {
+    "event_id":"INV_00000015",
+    "product_id":"PRD_00009596",
+    "event_type":"adjustment",
+    "quantity_change":4,
+    "new_stock_level":37,
+    "event_date":"2024-10-11T16:20:48.000",
+    "notes":"System reconciliation"
+  },
+  {
+    "event_id":"INV_00000016",
+    "product_id":"PRD_00001209",
+    "event_type":"adjustment",
+    "quantity_change":1,
+    "new_stock_level":88,
+    "event_date":"2025-10-02T05:14:39.000",
+    "notes":"Shrinkage adjustment"
+  },
+  {
+    "event_id":"INV_00000017",
+    "product_id":"PRD_00005150",
+    "event_type":"sale_deduction",
+    "quantity_change":-1,
+    "new_stock_level":81,
+    "event_date":"2024-12-20T17:42:26.000",
+    "notes":"Customer order fulfilled"
+  },
+  {
+    "event_id":"INV_00000018",
+    "product_id":"PRD_00003540",
+    "event_type":"restock",
+    "quantity_change":61,
+    "new_stock_level":103,
+    "event_date":"2024-10-31T19:23:25.000",
+    "notes":"Bulk import - quarterly stock review"
+  },
+  {
+    "event_id":"INV_00000019",
+    "product_id":"PRD_00009107",
+    "event_type":"restock",
+    "quantity_change":116,
+    "new_stock_level":144,
+    "event_date":"2025-05-20T05:30:40.000",
+    "notes":"Bulk import - quarterly stock review"
+  },
+  {
+    "event_id":"INV_00000020",
+    "product_id":"PRD_00005537",
+    "event_type":"restock",
+    "quantity_change":275,
+    "new_stock_level":341,
+    "event_date":"2024-12-19T21:23:21.000",
+    "notes":"Warehouse transfer in"
+  },
+  {
+    "event_id":"INV_00000021",
+    "product_id":"PRD_00001847",
+    "event_type":"adjustment",
+    "quantity_change":8,
+    "new_stock_level":8,
+    "event_date":"2024-07-23T14:21:49.000",
+    "notes":"Damaged units written off"
+  },
+  {
+    "event_id":"INV_00000022",
+    "product_id":"PRD_00008415",
+    "event_type":"adjustment",
+    "quantity_change":10,
+    "new_stock_level":373,
+    "event_date":"2025-12-20T02:48:46.000",
+    "notes":"System reconciliation"
+  },
+  {
+    "event_id":"INV_00000023",
+    "product_id":"PRD_00000076",
+    "event_type":"restock",
+    "quantity_change":125,
+    "new_stock_level":161,
+    "event_date":"2023-10-29T01:37:06.000",
+    "notes":"Return to stock - quality check passed"
+  },
+  {
+    "event_id":"INV_00000024",
+    "product_id":"PRD_00002201",
+    "event_type":"sale_deduction",
+    "quantity_change":-2,
+    "new_stock_level":135,
+    "event_date":"2025-01-04T09:07:43.000",
+    "notes":"Customer order fulfilled"
+  },
+  {
+    "event_id":"INV_00000025",
+    "product_id":"PRD_00009641",
+    "event_type":"sale_deduction",
+    "quantity_change":-1,
+    "new_stock_level":0,
+    "event_date":"2024-11-05T04:14:12.000",
+    "notes":"Customer order fulfilled"
+  }
+]

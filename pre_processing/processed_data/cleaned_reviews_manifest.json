@@ -1,0 +1,35 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_reviews.json",
+  "source_file": "data/upload_4930ba83/reviews.csv",
+  "columns": [
+    "review_id",
+    "order_id",
+    "customer_id",
+    "product_id",
+    "rating",
+    "title",
+    "body",
+    "review_date",
+    "verified_purchase",
+    "helpful_votes",
+    "reported"
+  ],
+  "dtypes": {
+    "review_id": "str",
+    "order_id": "str",
+    "customer_id": "str",
+    "product_id": "str",
+    "rating": "int64",
+    "title": "str",
+    "body": "str",
+    "review_date": "int64",
+    "verified_purchase": "bool",
+    "helpful_votes": "int64",
+    "reported": "bool"
+  },
+  "row_count": 25,
+  "summary": "The dataset has been successfully pre-processed. Here is a brief overview of the cleaned dataset:\n\n**Shape:** 25 rows and 11 columns.\n\n**Columns:** `review_id`, `order_id`, `customer_id`, `product_id`, `rating`, `title`, `body`, `review_date`, `verified_purchase`, `helpful_votes`, and `reported`.\n\n**Notable Characteristics:**\n*   The dataset contains customer reviews with ratings, review text, and other metadata.\n*   The `review_date` column is in datetime format.\n*   `rating` and `helpful_votes` are integer-based numeric columns.\n*   `verified_purchase` and `reported` are boolean fields.\n*   The dataset has been cleaned to remove duplicate entries and rows with missing essential information. Text fields with missing values have been replaced with empty strings. Data types have been standardized across all columns.",
+  "created_at": "2026-04-08T20:28:20.987490",
+  "status": "success",
+  "file_hash": "27fd259bb228117b011663f2f9cde488"
+}

@@ -1,0 +1,31 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_cart_events.json",
+  "source_file": "data/upload_4930ba83/cart_events.csv",
+  "columns": [
+    "event_id",
+    "customer_id",
+    "session_id",
+    "timestamp",
+    "event_type",
+    "product_id",
+    "device_type",
+    "traffic_source",
+    "cart_value"
+  ],
+  "dtypes": {
+    "event_id": "str",
+    "customer_id": "str",
+    "session_id": "str",
+    "timestamp": "datetime64[us]",
+    "event_type": "str",
+    "product_id": "str",
+    "device_type": "str",
+    "traffic_source": "str",
+    "cart_value": "float64"
+  },
+  "row_count": 25,
+  "summary": "The dataset contains 25 rows and 9 columns, capturing customer cart events. Key columns include identifiers for events, customers, sessions, and products, along with a timestamp for each interaction. The dataset also details the event type (e.g., \"add_to_cart\"), the device used, the traffic source, and the monetary value of the cart. During pre-processing, missing values were handled, and data types were optimized for analysis.",
+  "created_at": "2026-04-08T20:21:05.700189",
+  "status": "success",
+  "file_hash": "3a4eb9188b04d0c056f1cd30838d9b7c"
+}

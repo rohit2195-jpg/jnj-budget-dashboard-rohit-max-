@@ -1,0 +1,11 @@
+## Executive Summary
+This report summarizes the analysis of the provided dataset, highlighting two key metrics. The primary value, X, stands at **11,507.0**, while the secondary value, Y, is 1,525.2. Combined, these values total 13,032.2.
+
+### X
+The value for metric X is **11,507.0**.
+
+### Y
+The value for metric Y is **1,525.2**.
+
+## Additional Insights
+Metric X is significantly larger than metric Y, with a difference of 9,981.8. Specifically, X is approximately **7.5 times** greater than Y, indicating a substantial disparity between the two measured values.

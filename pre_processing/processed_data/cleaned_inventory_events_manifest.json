@@ -1,0 +1,27 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_inventory_events.json",
+  "source_file": "data/upload_4930ba83/inventory_events.csv",
+  "columns": [
+    "event_id",
+    "product_id",
+    "event_type",
+    "quantity_change",
+    "new_stock_level",
+    "event_date",
+    "notes"
+  ],
+  "dtypes": {
+    "event_id": "str",
+    "product_id": "str",
+    "event_type": "str",
+    "quantity_change": "int64",
+    "new_stock_level": "int64",
+    "event_date": "str",
+    "notes": "str"
+  },
+  "row_count": 25,
+  "summary": "The dataset contains 25 rows and 7 columns. The columns are: `event_id`, `product_id`, `event_type`, `quantity_change`, `new_stock_level`, `event_date`, and `notes`. This dataset appears to be a log of inventory events, tracking changes in stock levels for various products over time. Each event has a unique ID, a product ID, an event type (such as a sale or restocking), the change in quantity, the new stock level, the date of the event, and optional notes.",
+  "created_at": "2026-04-08T20:22:32.128852",
+  "status": "success",
+  "file_hash": "502f424864554193148a74ff986a0f4b"
+}

@@ -1,0 +1,25 @@
+{
+  "data_path": "pre_processing/processed_data/cleaned_refunds.json",
+  "source_file": "data/upload_4930ba83/refunds.csv",
+  "columns": [
+    "refund_id",
+    "order_id",
+    "refund_date",
+    "refund_reason",
+    "refund_amount",
+    "refund_status"
+  ],
+  "dtypes": {
+    "refund_id": "str",
+    "order_id": "str",
+    "refund_date": "str",
+    "refund_reason": "str",
+    "refund_amount": "float64",
+    "refund_status": "str"
+  },
+  "row_count": 25,
+  "summary": "The dataset contains 25 rows and 6 columns.\n\n### Columns:\n- **refund_id**: Unique identifier for each refund.\n- **order_id**: Identifier for the original order.\n- **refund_date**: Date and time of the refund.\n- **refund_reason**: Reason for the refund.\n- **refund_amount**: The amount refunded.\n- **refund_status**: The status of the refund.\n\n### Notable Characteristics:\n- The dataset has been cleaned to remove duplicate entries.\n- Data types have been standardized: `refund_date` is a datetime object, `refund_amount` is a numeric type, and the rest are strings.\n- Missing values in `refund_reason` and `refund_status` have been filled with \"unknown\".\n- Rows with missing key identifiers (`refund_id`, `order_id`), `refund_date`, or `refund_amount` have been removed.",
+  "created_at": "2026-04-08T20:27:18.148855",
+  "status": "success",
+  "file_hash": "6e452f38ae317c331f068f9ae9b00cef"
+}

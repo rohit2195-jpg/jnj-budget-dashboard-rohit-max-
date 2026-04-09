@@ -37,6 +37,22 @@ function cloneResult(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
+// ── Number formatters for charts ──────────────────────────────────────────────
+function formatChartNumber(val) {
+  if (val == null || typeof val !== 'number' || isNaN(val)) return '';
+  const abs = Math.abs(val);
+  if (abs >= 1_000_000_000) return (val / 1_000_000_000).toFixed(1).replace(/\.0$/, '') + 'B';
+  if (abs >= 1_000_000)     return (val / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+  if (abs >= 1_000)         return (val / 1_000).toFixed(1).replace(/\.0$/, '') + 'K';
+  if (Number.isInteger(val)) return val.toLocaleString();
+  return val.toFixed(2);
+}
+
+function formatTooltipNumber(val) {
+  if (val == null || typeof val !== 'number' || isNaN(val)) return '';
+  return val.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function ForecastCard({ fc }) {
@@ -137,8 +153,8 @@ function WelcomeState({ onSuggestionClick }) {
   return (
     <div className="welcome-state">
       <LayoutDashboard size={64} className="welcome-icon" />
-      <h2>Ready to Explore Spending Data?</h2>
-      <p>Enter a question above to get a detailed report and visual dashboard.</p>
+      <h2>JNJ Budget Dashboard</h2>
+      <p>Enter a question above to analyze budget and spending data with AI-powered insights.</p>
       <div className="suggestions">
         <button onClick={() => onSuggestionClick('Show me the top 5 departments by spending')}>
           "Top 5 departments by spending"
@@ -191,33 +207,19 @@ function App() {
   useEffect(() => { fetchDatasets(); }, []);
 
   const handleUpload = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
     setUploading(true);
     try {
-      if (files.length === 1) {
-        // Single file upload — existing endpoint
-        const formData = new FormData();
-        formData.append('file', files[0]);
-        const res = await fetch('http://localhost:5001/api/upload', { method: 'POST', body: formData });
-        const text = await res.text();
-        let json;
-        try { json = JSON.parse(text); } catch { throw new Error('Upload failed — server returned an unexpected response'); }
-        if (!res.ok) throw new Error(json.error || 'Upload failed');
-        await fetchDatasets();
-        setSelectedDataset(json.path);
-      } else {
-        // Multi-file upload — folder endpoint
-        const formData = new FormData();
-        files.forEach(f => formData.append('files', f));
-        const res = await fetch('http://localhost:5001/api/upload-folder', { method: 'POST', body: formData });
-        const text = await res.text();
-        let json;
-        try { json = JSON.parse(text); } catch { throw new Error('Upload failed — server returned an unexpected response'); }
-        if (!res.ok) throw new Error(json.error || 'Upload failed');
-        await fetchDatasets();
-        setSelectedDataset(json.folder_path);
-      }
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('http://localhost:5001/api/upload', { method: 'POST', body: formData });
+      const text = await res.text();
+      let json;
+      try { json = JSON.parse(text); } catch { throw new Error('Upload failed — server returned an unexpected response'); }
+      if (!res.ok) throw new Error(json.error || 'Upload failed');
+      await fetchDatasets();
+      setSelectedDataset(json.path);
     } catch (err) {
       setError(err.message);
       setAppState('error');
@@ -498,17 +500,16 @@ function App() {
           <div className="upload-btn-group">
             <label
               className="upload-btn upload-btn--file"
-              title="Upload one or more CSV/JSON files"
-              aria-label="Upload files"
+              title="Upload a single CSV or JSON file"
+              aria-label="Upload file"
             >
               {uploading
                 ? <Loader2 size={14} className="animate-spin" />
                 : <Upload size={14} />}
-              <span className="upload-btn-label">Files</span>
+              <span className="upload-btn-label">File</span>
               <input
                 type="file"
                 accept=".csv,.json"
-                multiple
                 onChange={handleUpload}
                 hidden
                 disabled={uploading}
@@ -516,7 +517,7 @@ function App() {
             </label>
             <label
               className="upload-btn upload-btn--folder"
-              title="Upload an entire folder of CSV/JSON files"
+              title="Upload a folder of CSV/JSON files"
               aria-label="Upload folder"
             >
               {uploading
@@ -636,8 +637,8 @@ function App() {
                               const isHorizontal = chart.options?.plotOptions?.bar?.horizontal === true;
                               const catCount = chart.options?.xaxis?.categories?.length || 0;
                               const chartHeight = isHorizontal
-                                ? Math.max(320, catCount * 38 + 60)
-                                : 320;
+                                ? Math.max(260, catCount * 32 + 50)
+                                : 260;
                               const chartOptions = cloneResult(chart.options || {});
                               const chartSeries = cloneResult(chart.series || []);
                               return (
@@ -647,26 +648,35 @@ function App() {
                                     key={chartKey}
                                     options={{
                                       ...chartOptions,
-                                      theme: { mode: theme, palette: 'palette1' },
+                                      theme: { mode: theme },
                                       chart: {
                                         ...(chartOptions.chart || {}),
                                         background: 'transparent',
-                                        foreColor: theme === 'dark' ? '#94a3b8' : '#64748b',
+                                        foreColor: theme === 'dark' ? '#a3a3a3' : '#6b7280',
+                                        parentHeightOffset: 0,
+                                        sparkline: { enabled: false },
                                       },
                                       grid: {
                                         ...(chartOptions.grid || {}),
-                                        borderColor: theme === 'dark' ? '#334155' : '#e2e8f0',
+                                        borderColor: theme === 'dark' ? '#333333' : '#e5e5e5',
+                                        padding: { left: 8, right: 8, top: -10, bottom: -5 },
                                       },
                                       tooltip: {
                                         ...(chartOptions.tooltip || {}),
                                         theme,
-                                        y: { formatter: undefined },
+                                        y: { formatter: (val) => formatTooltipNumber(val) },
                                       },
                                       xaxis: {
                                         ...(chartOptions.xaxis || {}),
                                         labels: {
                                           ...(chartOptions.xaxis?.labels || {}),
-                                          formatter: undefined,
+                                        },
+                                      },
+                                      yaxis: {
+                                        ...(chartOptions.yaxis || {}),
+                                        labels: {
+                                          ...(chartOptions.yaxis?.labels || {}),
+                                          formatter: (val) => formatChartNumber(val),
                                         },
                                       },
                                     }}
@@ -738,26 +748,35 @@ function App() {
                                 key={chartKey}
                                 options={{
                                   ...chartOptions,
-                                  theme: { mode: theme, palette: 'palette1' },
+                                  theme: { mode: theme },
                                   chart: {
                                     ...(chartOptions.chart || {}),
                                     background: 'transparent',
-                                    foreColor: theme === 'dark' ? '#94a3b8' : '#64748b',
+                                    foreColor: theme === 'dark' ? '#a3a3a3' : '#6b7280',
+                                    parentHeightOffset: 0,
+                                    sparkline: { enabled: false },
                                   },
                                   grid: {
                                     ...(chartOptions.grid || {}),
-                                    borderColor: theme === 'dark' ? '#334155' : '#e2e8f0',
+                                    borderColor: theme === 'dark' ? '#333333' : '#e5e5e5',
+                                    padding: { left: 8, right: 8, top: -10, bottom: -5 },
                                   },
                                   tooltip: {
                                     ...(chartOptions.tooltip || {}),
                                     theme,
-                                    y: { formatter: undefined },
+                                    y: { formatter: (val) => formatTooltipNumber(val) },
                                   },
                                   xaxis: {
                                     ...(chartOptions.xaxis || {}),
                                     labels: {
                                       ...(chartOptions.xaxis?.labels || {}),
-                                      formatter: undefined,
+                                    },
+                                  },
+                                  yaxis: {
+                                    ...(chartOptions.yaxis || {}),
+                                    labels: {
+                                      ...(chartOptions.yaxis?.labels || {}),
+                                      formatter: (val) => formatChartNumber(val),
                                     },
                                   },
                                 }}
