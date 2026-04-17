@@ -1,26 +1,25 @@
 from __future__ import annotations
 
-from contextvars import ContextVar
 import json
 import numpy as np
 from langchain.tools import tool
 from typing import List
 
-forecast_registry_var: ContextVar[list] = ContextVar("forecast_registry", default=[])
+# Use a module-level registry to avoid losing tool-produced state across LangGraph
+# execution boundaries. The graph chart registry already uses this same approach.
+_forecast_registry: list = []
 
 
 def reset_forecast_registry():
-    forecast_registry_var.set([])
+    _forecast_registry.clear()
 
 
 def get_forecast_registry():
-    return {"forecasts": list(forecast_registry_var.get())}
+    return {"forecasts": list(_forecast_registry)}
 
 
 def _append_forecast(result: dict):
-    forecasts = list(forecast_registry_var.get())
-    forecasts.append(result)
-    forecast_registry_var.set(forecasts)
+    _forecast_registry.append(result)
 
 
 def _adjusted_r2(r2, n, k):

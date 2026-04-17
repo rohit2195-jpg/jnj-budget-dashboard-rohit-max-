@@ -10,16 +10,22 @@ from langchain.tools import tool
 import json
 
 
+def _path_suffix(data_path: str) -> str:
+    """Add a short path-based suffix so same-named files in different folders do not collide."""
+    normalized = Path(data_path).as_posix().lower()
+    return hashlib.md5(normalized.encode("utf-8")).hexdigest()[:8]
+
+
 def _compute_output_path(data_path: str) -> str:
     """Deterministically compute the cleaned output path from the input path."""
     safe_stem = Path(data_path).stem.replace(" ", "_")
-    return f"pre_processing/processed_data/cleaned_{safe_stem}.json"
+    return f"pre_processing/processed_data/cleaned_{safe_stem}_{_path_suffix(data_path)}.json"
 
 
 def _compute_manifest_path(data_path: str) -> str:
     """Deterministically compute the per-file manifest path from the input path."""
     safe_stem = Path(data_path).stem.replace(" ", "_")
-    return f"pre_processing/processed_data/cleaned_{safe_stem}_manifest.json"
+    return f"pre_processing/processed_data/cleaned_{safe_stem}_{_path_suffix(data_path)}_manifest.json"
 
 
 def compute_file_hash(data_path: str) -> str:

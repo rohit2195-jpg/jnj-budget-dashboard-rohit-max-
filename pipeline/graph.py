@@ -159,7 +159,12 @@ def summarize_node(state: PipelineState) -> dict:
     try:
         serialized = serialize_analysis_output(state.get("analysis_output"))
         forecast_output = state.get("forecast_output")
-        summary = summarize_results(state["question"], serialized, "", forecast_output)
+        summary = summarize_results(
+            state["question"],
+            serialized,
+            "analysis_report.md",
+            forecast_output,
+        )
         return {"summary": str(summary)}
     except Exception as exc:
         return {"error": f"Summarization exception: {exc}"}

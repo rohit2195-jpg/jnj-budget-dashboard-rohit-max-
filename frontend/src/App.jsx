@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Chart from 'react-apexcharts';
 import ReactMarkdown from 'react-markdown';
 import {
@@ -193,18 +193,16 @@ function App() {
   const followupEndRef = useRef(null);
   const activeConvIdRef = useRef(null);
 
-  const fetchDatasets = async () => {
+  const fetchDatasets = useCallback(async () => {
     try {
       const res = await fetch('http://localhost:5001/api/datasets');
       const json = await res.json();
       setDatasets(json.datasets || []);
-      if (!selectedDataset && json.datasets?.length > 0) {
-        setSelectedDataset(json.datasets[0].path);
-      }
+      setSelectedDataset(current => current || json.datasets?.[0]?.path || '');
     } catch { /* ignore — backend may not be running */ }
-  };
+  }, []);
 
-  useEffect(() => { fetchDatasets(); }, []);
+  useEffect(() => { fetchDatasets(); }, [fetchDatasets]);
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];

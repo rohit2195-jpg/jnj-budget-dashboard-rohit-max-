@@ -30,7 +30,7 @@ A multi-agent AI data analysis platform for exploring datasets through natural-l
 ### Prerequisites
 
 - Python 3.10+
-- Node.js 18+
+- Node.js 20.19+ or 22.12+
 - A Gemini API key
 
 ### Setup
