@@ -102,19 +102,21 @@ def list_datasets():
             abs_path = os.path.join(root, fname)
             rel_path = os.path.relpath(abs_path, os.path.dirname(DATA_DIR))
             display_name = os.path.relpath(abs_path, DATA_DIR)
-            datasets.append({
-                'name': display_name,
-                'path': rel_path,
-                'size': os.path.getsize(abs_path),
-                'type': 'file',
-            })
 
             # Track subfolder membership
             parent = os.path.relpath(root, DATA_DIR)
             if parent != '.':
                 folder_files.setdefault(parent, []).append(rel_path)
+            else:
+                # Only list top-level files individually
+                datasets.append({
+                    'name': display_name,
+                    'path': rel_path,
+                    'size': os.path.getsize(abs_path),
+                    'type': 'file',
+                })
 
-    # Add folder-level entries for subdirectories with multiple data files
+    # Add folder-level entries for subdirectories with data files
     for folder_name, file_list in folder_files.items():
         if len(file_list) >= 1:
             folder_rel = os.path.relpath(os.path.join(DATA_DIR, folder_name),
