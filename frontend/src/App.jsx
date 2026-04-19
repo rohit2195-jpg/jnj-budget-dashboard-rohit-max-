@@ -16,7 +16,11 @@ function apiUrl(path) {
 }
 
 function ChartFallback() {
-  return <div className="chart-loading-placeholder">Loading chart...</div>;
+  return (
+    <div className="chart-loading-placeholder" role="status" aria-live="polite">
+      Loading chart...
+    </div>
+  );
 }
 
 async function parseJsonResponse(response, fallbackMessage) {
@@ -183,16 +187,28 @@ function WelcomeState({ onSuggestionClick }) {
     <div className="welcome-state">
       <LayoutDashboard size={64} className="welcome-icon" />
       <h2>JNJ Budget Dashboard</h2>
-      <p>Enter a question above to analyze budget and spending data with AI-powered insights.</p>
+      <p>
+        Ask for a broad read on the dataset, a breakdown of key patterns, or a focused comparison.
+        The app will inspect the uploaded data, draft a plan, and turn the results into charts and a report.
+      </p>
       <div className="suggestions">
-        <button type="button" onClick={() => onSuggestionClick('Show me the top 5 departments by spending')}>
-          "Top 5 departments by spending"
+        <button
+          type="button"
+          onClick={() => onSuggestionClick('Perform a thorough analysis of this dataset and highlight the most important trends, outliers, and actionable insights.')}
+        >
+          "Perform a thorough analysis and surface the most important insights"
         </button>
-        <button type="button" onClick={() => onSuggestionClick('How much was spent on education in 2023?')}>
-          "Spending on education in 2023"
+        <button
+          type="button"
+          onClick={() => onSuggestionClick('Summarize the structure of this dataset, identify the strongest patterns, and show the visuals that best explain what stands out.')}
+        >
+          "Summarize the dataset structure and show the clearest patterns"
         </button>
-        <button type="button" onClick={() => onSuggestionClick('Compare spending across different sub-agencies')}>
-          "Compare sub-agency spending"
+        <button
+          type="button"
+          onClick={() => onSuggestionClick('Analyze this data like an expert analyst: compare major segments, explain notable relationships, and point out anything unusual or worth investigating further.')}
+        >
+          "Compare major segments, explain relationships, and flag anomalies"
         </button>
       </div>
     </div>
@@ -501,14 +517,14 @@ function App() {
             <input
               id="analysis-question"
               type="text"
-              placeholder="Ask a question about US spending data..."
+              placeholder="Ask a question about the selected dataset..."
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               disabled={isInputDisabled}
               aria-describedby={!hasDataset ? 'dataset-required-message' : undefined}
             />
           </div>
-          <button type="submit" disabled={isAnalyzeDisabled}>
+          <button type="submit" disabled={isAnalyzeDisabled} aria-busy={loading}>
             {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : 'Analyze'}
           </button>
         </form>
@@ -570,6 +586,7 @@ function App() {
           <input
             type="file"
             ref={folderInputRef}
+            accept=".csv,.json"
             onChange={handleFolderUpload}
             hidden
             disabled={uploading}
@@ -581,6 +598,7 @@ function App() {
             type="button"
             onClick={toggleTheme}
             title="Toggle theme"
+            aria-pressed={theme === 'dark'}
             aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
           >
             {theme === 'dark' ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
@@ -676,7 +694,7 @@ function App() {
 
           {/* Dashboard — renders all sections (initial + follow-ups) */}
           {appState === 'complete' && dashboardSections.length > 0 && (
-            <div key={activeConvId || 'live-dashboard'} className="dashboard-additive" aria-live="polite">
+            <div key={activeConvId || 'live-dashboard'} className="dashboard-additive">
               {dashboardSections.map((section, sIdx) => {
                 const sectionKey = `${activeConvId || 'live'}-section-${sIdx}`;
 

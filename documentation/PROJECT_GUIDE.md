@@ -11,7 +11,7 @@ This repo is a multi-agent AI data analysis platform for exploring datasets thro
 - Orchestration: LangGraph pipeline in `pipeline/graph.py`
 - LLM provider: Google Gemini via `langchain-google-genai`
 
-Users submit a question about a dataset. The system preprocesses the data, generates an analysis plan, pauses for human approval, then resumes to run analysis, forecasting, chart generation, and summarization.
+Users submit a question about a dataset. The system preprocesses the data, generates an analysis plan, pauses for human approval, then runs the post-approval analysis path directly in the backend to produce forecasts, chart configs, and the markdown report.
 
 ## Main Commands
 
@@ -26,6 +26,7 @@ source .venv/bin/activate
 ### Frontend
 ```bash
 cd frontend
+nvm use || nvm install
 npm install
 npm run dev
 npm run build
@@ -44,7 +45,7 @@ Always use the repo venv Python because dependencies are already installed there
 .venv/bin/python -m py_compile pipeline/graph.py
 .venv/bin/python -m py_compile agent_tools/agent.py
 .venv/bin/python -c "import backend"
-.venv/bin/python -c "from pipeline.graph import build_graph"
+.venv/bin/python -c "from pipeline.graph import build_pipeline"
 ```
 
 Replace file paths with the specific Python files you changed.
@@ -57,15 +58,19 @@ cd frontend && npm run lint
 
 ## Architecture
 
-### LangGraph Pipeline
+### Approval + Execution Model
 
-Core pipeline in `pipeline/graph.py`:
+The system has two execution modes:
 
-`preprocess -> plan -> human_review [interrupt] -> analyze -> forecast -> graph_gen -> summarize -> END`
+- LangGraph handles `preprocess -> plan -> human_review [interrupt]`
+- The backend then runs the post-approval steps directly in Python:
+  `analyze -> forecast -> graph_gen -> summarize`
 
-Failure path:
+This split exists because the post-approval path is more reliable when it avoids checkpoint serialization of LLM/tool outputs.
 
-`retry_bump -> preprocess` with a maximum of 2 retries.
+Failure path inside the graph still uses:
+
+`retry_bump -> preprocess`
 
 ### Pipeline Stages
 
@@ -86,6 +91,7 @@ Failure path:
   - Converts analysis outputs into ApexCharts-compatible chart configs.
 - `summarize` in `summarizerAgent/summarizer_agent.py`
   - Produces the markdown report shown in the UI.
+  - Final summary generation is triggered from the backend after the post-plan runner completes.
 
 ### Forecasting
 
@@ -130,10 +136,10 @@ Supported chart types:
   - Returns the generated checklist for approval
 - `POST /api/analyze/resume`
   - Resumes after approval
-  - Runs `analyze -> forecast -> graph_gen -> summarize`
+  - Uses the paused plan state, then runs post-approval work directly in backend Python
   - Returns `status`, `summary`, `graphs`, and `forecast_output`
 
-Pipeline state across the approval pause is persisted with LangGraph `MemorySaver`, keyed by `thread_id`.
+Pipeline state across the approval pause is persisted with LangGraph `MemorySaver`, keyed by `thread_id`. Follow-up session state is persisted separately in `reports/followup_sessions.json`.
 
 ### Frontend
 
@@ -147,6 +153,7 @@ The frontend:
 - renders charts with ApexCharts
 - renders a Future Outlook section for forecasts
 - stores conversation history in `localStorage`
+- uses `/api/*` calls relative to the current origin unless `VITE_API_BASE_URL` is set
 
 ## Code Execution Pattern
 
@@ -165,15 +172,27 @@ MODEL_ID=gemini-2.5-pro
 
 `ANTHROPIC_API_KEY` may exist in `.env` but is not part of the active pipeline.
 
+Additional runtime configuration:
+
+```bash
+CORS_ORIGINS=https://app.example.com
+FLASK_HOST=127.0.0.1
+FLASK_PORT=5001
+FLASK_DEBUG=false
+VITE_API_BASE_URL=https://api.example.com
+```
+
 ## Data and Outputs
 
 - Raw datasets: `data/`
 - Processed artifacts: `pre_processing/processed_data/`
 - Generated reports: `reports/`
+- Follow-up session persistence: `reports/followup_sessions.json`
 
 ## Working Rules
 
 - Avoid deleting or overwriting generated datasets and reports unless the task requires it.
+- Treat generated reports, processed data, and follow-up session files as runtime artifacts unless the task explicitly wants them versioned.
 - When changing Python pipeline logic, validate with `py_compile` and a minimal import check.
 - When changing frontend behavior, run both `npm run build` and `npm run lint` in `frontend/`.
 - Keep agent-specific instruction files small and point them here for shared project context.

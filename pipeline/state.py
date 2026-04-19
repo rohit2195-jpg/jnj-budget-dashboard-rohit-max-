@@ -100,12 +100,23 @@ def sanitize_for_state(value):
 
     if _np is not None and isinstance(value, _np.generic):
         return sanitize_for_state(value.item())
+    if _np is not None and isinstance(value, _np.ndarray):
+        return [sanitize_for_state(item) for item in value.tolist()]
 
     if _pd is not None:
         if value is _pd.NA:
             return None
         if isinstance(value, (_pd.Timestamp, _pd.Timedelta, _pd.Period)):
             return str(value)
+        if isinstance(value, _pd.Series):
+            return [sanitize_for_state(item) for item in value.tolist()]
+        if isinstance(value, _pd.Index):
+            return [sanitize_for_state(item) for item in value.tolist()]
+        if isinstance(value, _pd.DataFrame):
+            return [
+                {str(key): sanitize_for_state(val) for key, val in row.items()}
+                for row in value.to_dict(orient="records")
+            ]
 
     if isinstance(value, (datetime, date)):
         return value.isoformat()

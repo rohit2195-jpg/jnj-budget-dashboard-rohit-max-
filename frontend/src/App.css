@@ -742,6 +742,9 @@ html[data-theme="dark"] .chart-card:hover {
   place-items: center;
   color: var(--text-muted);
   font-size: 0.875rem;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-inner);
+  background: var(--bg-card-inner);
 }
 
 /* ── Loading & welcome states ────────────────────────────────────────────────── */
@@ -759,6 +762,25 @@ html[data-theme="dark"] .chart-card:hover {
   margin-top: 2rem;
 }
 
+.welcome-state {
+  position: relative;
+  overflow: hidden;
+}
+
+.welcome-state::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at top left, var(--accent-glow), transparent 42%),
+    linear-gradient(135deg, transparent 0%, var(--primary-muted) 100%);
+  pointer-events: none;
+}
+
+.welcome-state > * {
+  position: relative;
+}
+
 .loading-icon {
   width: 2rem;
   height: 2rem;
@@ -773,14 +795,16 @@ html[data-theme="dark"] .chart-card:hover {
 }
 
 .welcome-state h2 {
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
+  font-size: 1.75rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: -0.02em;
 }
 
 .welcome-state p {
   color: var(--text-muted);
-  max-width: 500px;
+  max-width: 640px;
   margin-bottom: 2rem;
+  line-height: 1.7;
 }
 
 .suggestions {
@@ -791,19 +815,36 @@ html[data-theme="dark"] .chart-card:hover {
 }
 
 .suggestions button {
-  background-color: var(--bg-page);
+  background-color: rgb(255 255 255 / 0.72);
   border: 1px solid var(--border);
-  color: var(--text-muted);
-  padding: 0.5rem 1rem;
-  border-radius: 2rem;
+  color: var(--text-main);
+  padding: 0.875rem 1rem;
+  border-radius: 1.1rem;
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s;
+  max-width: 280px;
+  text-align: left;
+  line-height: 1.5;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.04);
 }
 
 .suggestions button:hover {
   border-color: var(--primary);
   color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.08);
+}
+
+.suggestions button:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+  border-color: var(--primary);
+}
+
+html[data-theme="dark"] .suggestions button {
+  background-color: rgb(23 23 23 / 0.82);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.18);
 }
 
 /* ── Spinner ─────────────────────────────────────────────────────────────────── */
@@ -814,6 +855,35 @@ html[data-theme="dark"] .chart-card:hover {
 @keyframes spin {
   from { transform: rotate(0deg); }
   to   { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-spin {
+    animation: none;
+  }
+
+  .dashboard-grid,
+  .followup-section,
+  .loading-state,
+  .welcome-state {
+    animation: none;
+  }
+
+  .chart-card,
+  .theme-toggle,
+  .upload-btn,
+  .search-form button,
+  .new-analysis-btn,
+  .followup-form button,
+  .sidebar-load,
+  .sidebar-delete,
+  .suggestions button {
+    transition: none;
+  }
+
+  .chart-card:hover {
+    transform: none;
+  }
 }
 
 /* ── Error card ──────────────────────────────────────────────────────────────── */
@@ -1207,6 +1277,10 @@ html[data-theme="dark"] .chart-card:hover {
 .followup-form button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.followup-form button:focus-visible {
+  outline-offset: 3px;
 }
 
 .followup-loading {
