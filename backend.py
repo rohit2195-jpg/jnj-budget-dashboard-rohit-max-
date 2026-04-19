@@ -6,17 +6,61 @@ from flask_cors import CORS
 from langgraph.types import Command
 from werkzeug.utils import secure_filename
 
-from pipeline.graph import pipeline
+from pipeline.graph import (
+    pipeline,
+    analyze_node,
+    forecast_node,
+    graph_gen_node,
+    followup_explain_node,
+    _question_wants_forecast,
+)
+from pipeline.state import serialize_analysis_output
+from summarizerAgent.summarizer_agent import summarize_results
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100 MB upload limit
-CORS(app)
+DEFAULT_CORS_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173']
+CORS(
+    app,
+    resources={
+        r"/api/*": {
+            "origins": [
+                origin.strip()
+                for origin in os.getenv('CORS_ORIGINS', '').split(',')
+                if origin.strip()
+            ] or DEFAULT_CORS_ORIGINS
+        }
+    },
+)
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
-REPORTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'reports')
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+REPORTS_DIR = os.path.join(BASE_DIR, 'reports')
 SESSIONS_FILE = os.path.join(REPORTS_DIR, 'followup_sessions.json')
 ALLOWED_EXTENSIONS = {'.csv', '.json'}
 MAX_FILES_PER_ANALYSIS = 10
+
+
+def _resolve_data_path(requested_path):
+    """Resolve a requested file or folder path and keep it inside data/."""
+    if not requested_path or not isinstance(requested_path, str):
+        raise ValueError("Invalid dataset path.")
+
+    normalized = requested_path.replace('\\', '/').strip()
+    if normalized.startswith('data/'):
+        normalized = normalized[5:]
+    normalized = normalized.strip('/')
+
+    abs_path = os.path.abspath(os.path.join(DATA_DIR, normalized))
+    data_root = os.path.abspath(DATA_DIR)
+    if os.path.commonpath([data_root, abs_path]) != data_root:
+        raise ValueError("Dataset path must stay inside the data directory.")
+
+    return abs_path
+
+
+def _to_repo_relative(abs_path):
+    return os.path.relpath(abs_path, BASE_DIR)
 
 
 def _normalize_session(payload):
@@ -66,6 +110,37 @@ def _save_sessions():
             json.dump(sessions, fh, indent=2)
     except Exception as exc:
         print(f"Warning: failed to persist follow-up sessions: {exc}")
+
+
+def _run_postplan_nodes(state):
+    """
+    Execute the post-plan pipeline directly in Python instead of through LangGraph.
+
+    We still use LangGraph for the pause/resume approval boundary, but after approval
+    we avoid further checkpoint writes because msgpack serialization has proven brittle
+    around LLM/tool outputs.
+    """
+    working = dict(state)
+
+    analysis_update = analyze_node(working)
+    working.update(analysis_update)
+    if working.get("error"):
+        return working
+
+    if not working.get("is_followup") or _question_wants_forecast(working.get("question", "")):
+        forecast_update = forecast_node(working)
+        working.update(forecast_update)
+
+    graph_update = graph_gen_node(working)
+    working.update(graph_update)
+    if working.get("error") and not working.get("graph_data"):
+        return working
+
+    if working.get("is_followup"):
+        explain_update = followup_explain_node(working)
+        working.update(explain_update)
+
+    return working
 
 
 # Follow-up session store.
@@ -243,27 +318,40 @@ def start_analysis():
 
         # Build data_paths list
         if filepaths and isinstance(filepaths, list):
-            data_paths = filepaths
-        elif filepath and os.path.isdir(filepath):
-            # Directory path: glob for CSV/JSON files inside
-            data_paths = sorted(
-                os.path.relpath(os.path.join(root, f), os.path.dirname(DATA_DIR))
-                for root, _, files in os.walk(filepath)
-                for f in files
-                if os.path.splitext(f)[1].lower() in ALLOWED_EXTENSIONS
-                and not f.startswith('.')
-            )
-            if not data_paths:
-                return jsonify({"error": f"No CSV/JSON files found in '{filepath}'"}), 400
+            data_paths = []
+            for requested_path in filepaths:
+                abs_path = _resolve_data_path(requested_path)
+                ext = os.path.splitext(abs_path)[1].lower()
+                if ext not in ALLOWED_EXTENSIONS or not os.path.isfile(abs_path):
+                    return jsonify({"error": f"Invalid dataset file: '{requested_path}'"}), 400
+                data_paths.append(_to_repo_relative(abs_path))
+        elif filepath:
+            abs_path = _resolve_data_path(filepath)
+            if os.path.isdir(abs_path):
+                # Directory path: glob for CSV/JSON files inside
+                data_paths = sorted(
+                    _to_repo_relative(os.path.join(root, filename))
+                    for root, _, files in os.walk(abs_path)
+                    for filename in files
+                    if os.path.splitext(filename)[1].lower() in ALLOWED_EXTENSIONS
+                    and not filename.startswith('.')
+                )
+                if not data_paths:
+                    return jsonify({"error": f"No CSV/JSON files found in '{filepath}'"}), 400
+            else:
+                ext = os.path.splitext(abs_path)[1].lower()
+                if ext not in ALLOWED_EXTENSIONS or not os.path.isfile(abs_path):
+                    return jsonify({"error": f"Invalid dataset file: '{filepath}'"}), 400
+                data_paths = [_to_repo_relative(abs_path)]
         else:
-            data_paths = [filepath]
+            return jsonify({"error": "Missing dataset path"}), 400
 
         if len(data_paths) > MAX_FILES_PER_ANALYSIS:
             return jsonify({"error": f"Too many files ({len(data_paths)}). Maximum is {MAX_FILES_PER_ANALYSIS}."}), 400
 
         # Validate all paths exist
         for dp in data_paths:
-            if not os.path.exists(dp):
+            if not os.path.exists(os.path.join(BASE_DIR, dp)):
                 return jsonify({"error": f"File not found: '{dp}'"}), 404
 
         thread_id = str(uuid.uuid4())
@@ -308,6 +396,8 @@ def start_analysis():
         # Unexpected: graph completed without interrupt
         return jsonify({"status": "error", "error": "Unexpected pipeline termination."}), 500
 
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     except Exception as exc:
         print(f"Error in /api/analyze/start: {exc}")
         return jsonify({"error": str(exc)}), 500
@@ -351,24 +441,39 @@ def resume_analysis():
 
         print(f"[{thread_id[:8]}] Resuming with approved={approved}")
 
-        # Resume: Command(resume=approved) makes interrupt() return `approved`
-        # inside human_review_node, which stores it as state["approved"].
-        for _ in pipeline.stream(Command(resume=approved), config=config):
-            pass
-
-        final_values = pipeline.get_state(config).values
-
         if not approved:
             return jsonify({"status": "rejected"}), 200
 
+        # Resume only the approval checkpoint, then run the remaining nodes
+        # directly in Python to avoid msgpack serialization failures from
+        # downstream LLM/tool outputs.
+        base_values = dict(graph_state.values)
+        base_values["approved"] = True
+        base_values["error"] = None
+        final_values = _run_postplan_nodes(base_values)
+
         if final_values.get("error") and not final_values.get("summary"):
             return jsonify({"status": "error", "error": final_values["error"]}), 500
+
+        # Generate the markdown report outside LangGraph checkpointing.
+        # This avoids resume failures when tool/LLM internals produce objects
+        # that the checkpointer cannot msgpack-serialize.
+        summary_text = final_values.get("summary", "")
+        if not summary_text:
+            try:
+                summary_text = summarize_results(
+                    final_values.get("question", ""),
+                    serialize_analysis_output(final_values.get("analysis_output")),
+                    "analysis_report.md",
+                    final_values.get("forecast_output"),
+                )
+            except Exception as exc:
+                return jsonify({"status": "error", "error": f"Summarization exception: {exc}"}), 500
 
         # Create a session for follow-up questions
         session_id = str(uuid.uuid4())
         graph_data = final_values.get("graph_data", {"charts": []})
         original_question = final_values.get("question", "")
-        summary_text = final_values.get("summary", "")
 
         sessions[session_id] = {
             "manifest":             final_values.get("manifest"),
@@ -447,10 +552,7 @@ def followup_analysis():
 
         print(f"[{thread_id[:8]}] Follow-up for session {session_id[:8]}: {user_question}")
 
-        for _ in pipeline.stream(followup_state, config=config):
-            pass
-
-        final_values = pipeline.get_state(config).values
+        final_values = _run_postplan_nodes(followup_state)
 
         if final_values.get("error") and not final_values.get("graph_data"):
             return jsonify({"status": "error", "error": final_values["error"]}), 500
@@ -487,4 +589,7 @@ def followup_analysis():
 if __name__ == '__main__':
     # use_reloader=False prevents a child-process fork that would lose the
     # in-memory MemorySaver state between /start and /resume calls.
-    app.run(debug=True, host='0.0.0.0', port=5001, use_reloader=False)
+    debug_mode = os.getenv('FLASK_DEBUG', '').lower() in {'1', 'true', 'yes'}
+    host = os.getenv('FLASK_HOST', '127.0.0.1')
+    port = int(os.getenv('FLASK_PORT', '5001'))
+    app.run(debug=debug_mode, host=host, port=port, use_reloader=False)

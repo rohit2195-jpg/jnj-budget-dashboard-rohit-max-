@@ -60,6 +60,7 @@ cd ..
 ```bash
 # Terminal 1 — backend
 source .venv/bin/activate
+export FLASK_HOST=127.0.0.1
 python backend.py
 
 # Terminal 2 — frontend
@@ -68,6 +69,17 @@ npm run dev
 ```
 
 The frontend runs at `http://localhost:5173` and the backend at `http://localhost:5001`.
+
+During local development, Vite proxies `/api/*` requests to the backend on port `5001`. For a deployed frontend, set `VITE_API_BASE_URL` if the API is hosted on a different origin:
+
+```bash
+cd frontend
+echo "VITE_API_BASE_URL=https://your-api-host.example.com" > .env.local
+```
+
+If the frontend and backend are served from the same origin in production, no extra frontend env var is required.
+
+For a deployed backend, set `CORS_ORIGINS` to a comma-separated allowlist instead of relying on the local-development defaults. You can also override `FLASK_HOST`, `FLASK_PORT`, and `FLASK_DEBUG` as needed.
 
 ## How It Works
 

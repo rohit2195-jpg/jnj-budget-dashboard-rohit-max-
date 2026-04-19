@@ -13,7 +13,7 @@ NEVER write vague steps like these:
 
 ALWAYS write steps that name exact columns and operations:
   GOOD: "Group by 'Recipient Name', sum 'Award Amount', sort descending, take top 15"
-  GOOD: "Parse 'Start Date' to datetime, resample by year ('Y'), sum 'Award Amount', return as timeseries"
+  GOOD: "Parse 'Start Date' to datetime, resample by year ('YE'), sum 'Award Amount', return as timeseries"
   GOOD: "For each unique 'team_name', compute mean of 'lap_time_sec'; rank ascending"
 
 OUTPUT FORMAT — return only this JSON, no other text:
@@ -105,6 +105,7 @@ Rules:
 - Use only column names listed above{multi_file_rule}
 - Start with the most direct answer, then add supporting context
 - If date/time columns exist, include at least one time-series step
+- When suggesting monthly resampling, use pandas 'ME' instead of deprecated 'M'
 - If category + numeric columns exist, include at least one ranking/aggregation step
 - Limit any step aggregating many categories to "top 15 X by Y"
 - Output ONLY the JSON object. No markdown fences, no explanation."""

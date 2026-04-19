@@ -1,8 +1,19 @@
 from __future__ import annotations
 import json
 import math
+from datetime import date, datetime
 from typing import Optional, Union
 from typing_extensions import TypedDict
+
+try:
+    import numpy as _np
+except Exception:  # pragma: no cover - numpy is installed here, but keep this defensive
+    _np = None
+
+try:
+    import pandas as _pd
+except Exception:  # pragma: no cover
+    _pd = None
 
 
 class PipelineState(TypedDict, total=False):
@@ -71,11 +82,51 @@ class _CleanEncoder(json.JSONEncoder):
         return obj
 
 
+def sanitize_for_state(value):
+    """
+    Recursively convert pandas/numpy values into JSON/msgpack-safe Python types.
+
+    LangGraph checkpoints can fail if any node returns numpy scalars, pandas NA,
+    timestamps, periods, timedeltas, NaN, or infinities. This function normalizes
+    those values at the graph boundary instead of trusting LLM-generated code.
+    """
+    if value is None or isinstance(value, (str, bool, int)):
+        return value
+
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
+        return value
+
+    if _np is not None and isinstance(value, _np.generic):
+        return sanitize_for_state(value.item())
+
+    if _pd is not None:
+        if value is _pd.NA:
+            return None
+        if isinstance(value, (_pd.Timestamp, _pd.Timedelta, _pd.Period)):
+            return str(value)
+
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+
+    if isinstance(value, dict):
+        return {
+            str(key): sanitize_for_state(val)
+            for key, val in value.items()
+        }
+
+    if isinstance(value, (list, tuple, set)):
+        return [sanitize_for_state(item) for item in value]
+
+    return value
+
+
 def serialize_analysis_output(analysis_output) -> str:
     """Serialize analysis_output to a string for downstream LLM agents."""
     if analysis_output is None:
         return ""
     if isinstance(analysis_output, dict):
-        cleaned = _CleanEncoder()._round_floats(analysis_output)
+        cleaned = _CleanEncoder()._round_floats(sanitize_for_state(analysis_output))
         return json.dumps(cleaned, indent=2, default=str)
     return str(analysis_output)

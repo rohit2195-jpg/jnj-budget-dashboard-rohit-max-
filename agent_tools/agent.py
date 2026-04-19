@@ -95,8 +95,9 @@ The generated code must define a function named 'analyze_spending_data(file_path
      "series": [{{"name": "Series A", "data": [num1, ...]}}, ...]
    }}
 6. Converts all numpy types with .item() or float() before inserting into results
-7. Ends with: import json; print(json.dumps(results))
-8. For categorical/ranking results, include at most 15 items sorted by value descending.
+7. If monthly resampling is needed, use pandas 'ME' instead of deprecated 'M'
+8. Ends with: import json; print(json.dumps(results))
+9. For categorical/ranking results, include at most 15 items sorted by value descending.
    If the data has more than 15 categories, sum the remaining values into a single final
    entry labelled "Other".
 
@@ -107,6 +108,7 @@ WHAT WRONG OUTPUT LOOKS LIKE — do not do this:
   BAD: results["result1"] = …  → key must match output_label exactly
   BAD: "values": [np.int64(x)] → convert all numpy types: float(x) or x.item()
   BAD: "type": "comparison", "values": [...]  → comparison needs "series": [{{name, data}}]
+  BAD: df.resample("M")        → monthly resampling must use "ME"
 
 BEFORE writing each results entry, ask:
   1. Is this one number? → scalar

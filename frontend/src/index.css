@@ -1,7 +1,8 @@
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+  color-scheme: light dark;
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -9,6 +10,7 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+html,
 body {
   margin: 0;
   min-width: 320px;
@@ -16,10 +18,22 @@ body {
   transition: background-color 0.2s, color 0.2s;
 }
 
+body {
+  background-color: #f5f5f5;
+}
+
 #root {
   width: 100%;
+  min-height: 100vh;
 }
 
 * {
   box-sizing: border-box;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
 }

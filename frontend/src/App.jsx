@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import Chart from 'react-apexcharts';
+import { Suspense, lazy, useState, useEffect, useRef, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import {
   Search, LayoutDashboard, FileText, Loader2, AlertCircle,
@@ -8,6 +7,36 @@ import {
   FolderOpen, Send,
 } from 'lucide-react';
 import './App.css';
+
+const Chart = lazy(() => import('react-apexcharts'));
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+
+function apiUrl(path) {
+  return `${API_BASE_URL}${path}`;
+}
+
+function ChartFallback() {
+  return <div className="chart-loading-placeholder">Loading chart...</div>;
+}
+
+async function parseJsonResponse(response, fallbackMessage) {
+  const text = await response.text();
+  let payload = null;
+
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      if (!response.ok) throw new Error(fallbackMessage);
+    }
+  }
+
+  if (!response.ok) {
+    throw new Error(payload?.error || fallbackMessage);
+  }
+
+  return payload;
+}
 
 // ── localStorage helpers ──────────────────────────────────────────────────────
 const STORAGE_KEY = 'budget-dashboard-conversations';
@@ -138,10 +167,10 @@ function PlanApprovalCard({ pendingPlan, onApprove, onReject }) {
         ))}
       </ol>
       <div className="approval-actions">
-        <button className="btn-approve" onClick={onApprove}>
+        <button type="button" className="btn-approve" onClick={onApprove}>
           <CheckCircle size={15} /> Approve &amp; Run
         </button>
-        <button className="btn-reject" onClick={onReject}>
+        <button type="button" className="btn-reject" onClick={onReject}>
           <XCircle size={15} /> Reject
         </button>
       </div>
@@ -156,13 +185,13 @@ function WelcomeState({ onSuggestionClick }) {
       <h2>JNJ Budget Dashboard</h2>
       <p>Enter a question above to analyze budget and spending data with AI-powered insights.</p>
       <div className="suggestions">
-        <button onClick={() => onSuggestionClick('Show me the top 5 departments by spending')}>
+        <button type="button" onClick={() => onSuggestionClick('Show me the top 5 departments by spending')}>
           "Top 5 departments by spending"
         </button>
-        <button onClick={() => onSuggestionClick('How much was spent on education in 2023?')}>
+        <button type="button" onClick={() => onSuggestionClick('How much was spent on education in 2023?')}>
           "Spending on education in 2023"
         </button>
-        <button onClick={() => onSuggestionClick('Compare spending across different sub-agencies')}>
+        <button type="button" onClick={() => onSuggestionClick('Compare spending across different sub-agencies')}>
           "Compare sub-agency spending"
         </button>
       </div>
@@ -192,11 +221,19 @@ function App() {
   const [loadingFollowupConvId, setLoadingFollowupConvId] = useState(null);
   const followupEndRef = useRef(null);
   const activeConvIdRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const folderInputRef = useRef(null);
+
+  useEffect(() => {
+    if (!folderInputRef.current) return;
+    folderInputRef.current.setAttribute('webkitdirectory', '');
+    folderInputRef.current.setAttribute('directory', '');
+  }, []);
 
   const fetchDatasets = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:5001/api/datasets');
-      const json = await res.json();
+      const res = await fetch(apiUrl('/api/datasets'));
+      const json = await parseJsonResponse(res, 'Unable to load datasets');
       setDatasets(json.datasets || []);
       setSelectedDataset(current => current || json.datasets?.[0]?.path || '');
     } catch { /* ignore — backend may not be running */ }
@@ -211,11 +248,8 @@ function App() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const res = await fetch('http://localhost:5001/api/upload', { method: 'POST', body: formData });
-      const text = await res.text();
-      let json;
-      try { json = JSON.parse(text); } catch { throw new Error('Upload failed — server returned an unexpected response'); }
-      if (!res.ok) throw new Error(json.error || 'Upload failed');
+      const res = await fetch(apiUrl('/api/upload'), { method: 'POST', body: formData });
+      const json = await parseJsonResponse(res, 'Upload failed');
       await fetchDatasets();
       setSelectedDataset(json.path);
     } catch (err) {
@@ -241,11 +275,8 @@ function App() {
       const firstPath = files[0].webkitRelativePath || '';
       const folderName = firstPath.split('/')[0] || '';
       if (folderName) formData.append('folder_name', folderName);
-      const res = await fetch('http://localhost:5001/api/upload-folder', { method: 'POST', body: formData });
-      const text = await res.text();
-      let json;
-      try { json = JSON.parse(text); } catch { throw new Error('Upload failed — server returned an unexpected response'); }
-      if (!res.ok) throw new Error(json.error || 'Upload failed');
+      const res = await fetch(apiUrl('/api/upload-folder'), { method: 'POST', body: formData });
+      const json = await parseJsonResponse(res, 'Upload failed');
       await fetchDatasets();
       setSelectedDataset(json.folder_path);
     } catch (err) {
@@ -271,6 +302,7 @@ function App() {
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   const loading = appState === 'loading_start' || appState === 'loading_resume';
+  const hasDataset = Boolean(selectedDataset);
 
   // ── sidebar actions ────────────────────────────────────────────────────────
   const handleNewChat = () => {
@@ -320,7 +352,7 @@ function App() {
     setSessionId(null); setDashboardSections([]);
 
     try {
-      const response = await fetch('http://localhost:5001/api/analyze/start', {
+      const response = await fetch(apiUrl('/api/analyze/start'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -331,8 +363,7 @@ function App() {
             : { filepath: selectedDataset || undefined }),
         }),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Failed to fetch data from the server');
+      const result = await parseJsonResponse(response, 'Failed to fetch data from the server');
       if (result.status === 'pending_approval') {
         setThreadId(result.thread_id);
         setPendingPlan(result.plan);
@@ -351,13 +382,12 @@ function App() {
   const handleApprove = async () => {
     setAppState('loading_resume'); setError(null);
     try {
-      const response = await fetch('http://localhost:5001/api/analyze/resume', {
+      const response = await fetch(apiUrl('/api/analyze/resume'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ thread_id: threadId, approved: true }),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Failed to fetch data from the server');
+      const result = await parseJsonResponse(response, 'Failed to fetch data from the server');
       if (result.status === 'error') throw new Error(result.error);
       finishAnalysis(result);
     } catch (err) {
@@ -368,7 +398,7 @@ function App() {
 
   const handleReject = async () => {
     try {
-      await fetch('http://localhost:5001/api/analyze/resume', {
+      await fetch(apiUrl('/api/analyze/resume'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ thread_id: threadId, approved: false }),
@@ -411,13 +441,12 @@ function App() {
     setError(null);
 
     try {
-      const response = await fetch('http://localhost:5001/api/analyze/followup', {
+      const response = await fetch(apiUrl('/api/analyze/followup'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question: sourceQuestion, session_id: sourceSessionId }),
       });
-      const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Follow-up failed');
+      const result = await parseJsonResponse(response, 'Follow-up failed');
 
       const newSection = {
         type: 'followup',
@@ -454,6 +483,7 @@ function App() {
   const followupLoading = loadingFollowupConvId === activeConvId;
 
   const isInputDisabled = loading || appState === 'pending_approval';
+  const isAnalyzeDisabled = isInputDisabled || !hasDataset || !question.trim();
 
   return (
     <div className="app-container">
@@ -465,23 +495,29 @@ function App() {
           <h1>Budget Dashboard</h1>
         </div>
         <form onSubmit={handleSearch} className="search-form">
+          <label className="sr-only" htmlFor="analysis-question">Ask a question</label>
           <div className="search-input-wrapper">
-            <Search className="search-icon" />
+            <Search className="search-icon" aria-hidden="true" />
             <input
+              id="analysis-question"
               type="text"
               placeholder="Ask a question about US spending data..."
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               disabled={isInputDisabled}
+              aria-describedby={!hasDataset ? 'dataset-required-message' : undefined}
             />
           </div>
-          <button type="submit" disabled={isInputDisabled}>
-            {loading ? <Loader2 className="animate-spin" /> : 'Analyze'}
+          <button type="submit" disabled={isAnalyzeDisabled}>
+            {loading ? <Loader2 className="animate-spin" aria-hidden="true" /> : 'Analyze'}
           </button>
         </form>
         <div className="dataset-picker">
-          <Database size={16} className="dataset-icon" />
+          <label className="sr-only" htmlFor="dataset-select">Choose a dataset</label>
+          <Database size={16} className="dataset-icon" aria-hidden="true" />
           <select
+            id="dataset-select"
+            aria-label="Select dataset"
             value={selectedDataset}
             onChange={(e) => setSelectedDataset(e.target.value)}
             disabled={loading || appState === 'pending_approval'}
@@ -496,46 +532,58 @@ function App() {
             ))}
           </select>
           <div className="upload-btn-group">
-            <label
+            <button
+              type="button"
               className="upload-btn upload-btn--file"
               title="Upload a single CSV or JSON file"
-              aria-label="Upload file"
+              aria-label="Upload a single CSV or JSON file"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
             >
               {uploading
-                ? <Loader2 size={14} className="animate-spin" />
-                : <Upload size={14} />}
+                ? <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                : <Upload size={14} aria-hidden="true" />}
               <span className="upload-btn-label">File</span>
-              <input
-                type="file"
-                accept=".csv,.json"
-                onChange={handleUpload}
-                hidden
-                disabled={uploading}
-              />
-            </label>
-            <label
+            </button>
+            <button
+              type="button"
               className="upload-btn upload-btn--folder"
               title="Upload a folder of CSV/JSON files"
-              aria-label="Upload folder"
+              aria-label="Upload a folder of CSV or JSON files"
+              onClick={() => folderInputRef.current?.click()}
+              disabled={uploading}
             >
               {uploading
-                ? <Loader2 size={14} className="animate-spin" />
-                : <FolderOpen size={14} />}
+                ? <Loader2 size={14} className="animate-spin" aria-hidden="true" />
+                : <FolderOpen size={14} aria-hidden="true" />}
               <span className="upload-btn-label">Folder</span>
-              <input
-                type="file"
-                webkitdirectory=""
-                directory=""
-                onChange={handleFolderUpload}
-                hidden
-                disabled={uploading}
-              />
-            </label>
+            </button>
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.json"
+            onChange={handleUpload}
+            hidden
+            disabled={uploading}
+          />
+          <input
+            type="file"
+            ref={folderInputRef}
+            onChange={handleFolderUpload}
+            hidden
+            disabled={uploading}
+          />
         </div>
         <div className="header-actions">
-          <button className="theme-toggle" onClick={toggleTheme} title="Toggle theme">
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+          <button
+            className="theme-toggle"
+            type="button"
+            onClick={toggleTheme}
+            title="Toggle theme"
+            aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+          >
+            {theme === 'dark' ? <Sun size={18} aria-hidden="true" /> : <Moon size={18} aria-hidden="true" />}
           </button>
         </div>
       </header>
@@ -545,7 +593,7 @@ function App() {
 
         {/* Sidebar */}
         <aside className="sidebar">
-          <button className="new-analysis-btn" onClick={handleNewChat}>
+          <button className="new-analysis-btn" type="button" onClick={handleNewChat}>
             <Plus size={15} />
             New Analysis
           </button>
@@ -554,20 +602,25 @@ function App() {
             {conversations.length === 0
               ? <p className="sidebar-empty">No analyses yet</p>
               : conversations.map(conv => (
-                  <div
-                    key={conv.id}
-                    className={`sidebar-item${activeConvId === conv.id ? ' active' : ''}`}
-                    onClick={() => handleLoadConversation(conv)}
-                  >
-                    <MessageSquare size={13} className="sidebar-item-icon" />
-                    <div className="sidebar-item-text">
-                      <span className="sidebar-item-q">{conv.question}</span>
-                      <span className="sidebar-item-time">{timeLabel(conv.timestamp)}</span>
-                    </div>
+                  <div key={conv.id} className={`sidebar-item${activeConvId === conv.id ? ' active' : ''}`}>
+                    <button
+                      type="button"
+                      className="sidebar-load"
+                      onClick={() => handleLoadConversation(conv)}
+                      aria-current={activeConvId === conv.id ? 'page' : undefined}
+                    >
+                      <MessageSquare size={13} className="sidebar-item-icon" aria-hidden="true" />
+                      <div className="sidebar-item-text">
+                        <span className="sidebar-item-q">{conv.question}</span>
+                        <span className="sidebar-item-time">{timeLabel(conv.timestamp)}</span>
+                      </div>
+                    </button>
                     <button
                       className="sidebar-delete"
-                      onClick={e => { e.stopPropagation(); handleDeleteConversation(conv.id); }}
-                      title="Delete"
+                      type="button"
+                      onClick={() => handleDeleteConversation(conv.id)}
+                      title={`Delete analysis: ${conv.question}`}
+                      aria-label={`Delete analysis: ${conv.question}`}
                     >
                       <Trash2 size={13} />
                     </button>
@@ -580,18 +633,25 @@ function App() {
         {/* ── Main content ─────────────────────────────────────────────────── */}
         <main className="main-content">
 
+          {!hasDataset && (
+            <div id="dataset-required-message" className="info-card" role="status">
+              <Database className="info-icon" aria-hidden="true" />
+              <p>Select or upload a dataset before running an analysis.</p>
+            </div>
+          )}
+
           {/* Error */}
           {appState === 'error' && (
-            <div className="error-card">
-              <AlertCircle className="error-icon" />
+            <div className="error-card" role="alert">
+              <AlertCircle className="error-icon" aria-hidden="true" />
               <p>{error}</p>
             </div>
           )}
 
           {/* Loading */}
           {loading && (
-            <div className="loading-state">
-              <Loader2 className="animate-spin loading-icon" />
+            <div className="loading-state" role="status" aria-live="polite">
+              <Loader2 className="animate-spin loading-icon" aria-hidden="true" />
               <p>
                 {appState === 'loading_start'
                   ? 'Preprocessing data and building analysis plan...'
@@ -616,7 +676,7 @@ function App() {
 
           {/* Dashboard — renders all sections (initial + follow-ups) */}
           {appState === 'complete' && dashboardSections.length > 0 && (
-            <div key={activeConvId || 'live-dashboard'} className="dashboard-additive">
+            <div key={activeConvId || 'live-dashboard'} className="dashboard-additive" aria-live="polite">
               {dashboardSections.map((section, sIdx) => {
                 const sectionKey = `${activeConvId || 'live'}-section-${sIdx}`;
 
@@ -642,47 +702,49 @@ function App() {
                               return (
                                 <div key={chartKey} className="chart-card">
                                   <h3>{chart.title || chart.options?.title?.text || `Chart ${index + 1}`}</h3>
-                                  <Chart
-                                    key={chartKey}
-                                    options={{
-                                      ...chartOptions,
-                                      theme: { mode: theme },
-                                      chart: {
-                                        ...(chartOptions.chart || {}),
-                                        background: 'transparent',
-                                        foreColor: theme === 'dark' ? '#a3a3a3' : '#6b7280',
-                                        parentHeightOffset: 0,
-                                        sparkline: { enabled: false },
-                                      },
-                                      grid: {
-                                        ...(chartOptions.grid || {}),
-                                        borderColor: theme === 'dark' ? '#333333' : '#e5e5e5',
-                                        padding: { left: 8, right: 8, top: -10, bottom: -5 },
-                                      },
-                                      tooltip: {
-                                        ...(chartOptions.tooltip || {}),
-                                        theme,
-                                        y: { formatter: (val) => formatTooltipNumber(val) },
-                                      },
-                                      xaxis: {
-                                        ...(chartOptions.xaxis || {}),
-                                        labels: {
-                                          ...(chartOptions.xaxis?.labels || {}),
+                                  <Suspense fallback={<ChartFallback />}>
+                                    <Chart
+                                      key={chartKey}
+                                      options={{
+                                        ...chartOptions,
+                                        theme: { mode: theme },
+                                        chart: {
+                                          ...(chartOptions.chart || {}),
+                                          background: 'transparent',
+                                          foreColor: theme === 'dark' ? '#a3a3a3' : '#6b7280',
+                                          parentHeightOffset: 0,
+                                          sparkline: { enabled: false },
                                         },
-                                      },
-                                      yaxis: {
-                                        ...(chartOptions.yaxis || {}),
-                                        labels: {
-                                          ...(chartOptions.yaxis?.labels || {}),
-                                          formatter: (val) => formatChartNumber(val),
+                                        grid: {
+                                          ...(chartOptions.grid || {}),
+                                          borderColor: theme === 'dark' ? '#333333' : '#e5e5e5',
+                                          padding: { left: 8, right: 8, top: -10, bottom: -5 },
                                         },
-                                      },
-                                    }}
-                                    series={chartSeries}
-                                    type={chart.type || 'bar'}
-                                    width="100%"
-                                    height={chartHeight}
-                                  />
+                                        tooltip: {
+                                          ...(chartOptions.tooltip || {}),
+                                          theme,
+                                          y: { formatter: (val) => formatTooltipNumber(val) },
+                                        },
+                                        xaxis: {
+                                          ...(chartOptions.xaxis || {}),
+                                          labels: {
+                                            ...(chartOptions.xaxis?.labels || {}),
+                                          },
+                                        },
+                                        yaxis: {
+                                          ...(chartOptions.yaxis || {}),
+                                          labels: {
+                                            ...(chartOptions.yaxis?.labels || {}),
+                                            formatter: (val) => formatChartNumber(val),
+                                          },
+                                        },
+                                      }}
+                                      series={chartSeries}
+                                      type={chart.type || 'bar'}
+                                      width="100%"
+                                      height={chartHeight}
+                                    />
+                                  </Suspense>
                                 </div>
                               );
                             })
@@ -742,47 +804,49 @@ function App() {
                           return (
                             <div key={chartKey} className="chart-card">
                               <h3>{chart.title || chart.options?.title?.text || `Chart ${index + 1}`}</h3>
-                              <Chart
-                                key={chartKey}
-                                options={{
-                                  ...chartOptions,
-                                  theme: { mode: theme },
-                                  chart: {
-                                    ...(chartOptions.chart || {}),
-                                    background: 'transparent',
-                                    foreColor: theme === 'dark' ? '#a3a3a3' : '#6b7280',
-                                    parentHeightOffset: 0,
-                                    sparkline: { enabled: false },
-                                  },
-                                  grid: {
-                                    ...(chartOptions.grid || {}),
-                                    borderColor: theme === 'dark' ? '#333333' : '#e5e5e5',
-                                    padding: { left: 8, right: 8, top: -10, bottom: -5 },
-                                  },
-                                  tooltip: {
-                                    ...(chartOptions.tooltip || {}),
-                                    theme,
-                                    y: { formatter: (val) => formatTooltipNumber(val) },
-                                  },
-                                  xaxis: {
-                                    ...(chartOptions.xaxis || {}),
-                                    labels: {
-                                      ...(chartOptions.xaxis?.labels || {}),
+                              <Suspense fallback={<ChartFallback />}>
+                                <Chart
+                                  key={chartKey}
+                                  options={{
+                                    ...chartOptions,
+                                    theme: { mode: theme },
+                                    chart: {
+                                      ...(chartOptions.chart || {}),
+                                      background: 'transparent',
+                                      foreColor: theme === 'dark' ? '#a3a3a3' : '#6b7280',
+                                      parentHeightOffset: 0,
+                                      sparkline: { enabled: false },
                                     },
-                                  },
-                                  yaxis: {
-                                    ...(chartOptions.yaxis || {}),
-                                    labels: {
-                                      ...(chartOptions.yaxis?.labels || {}),
-                                      formatter: (val) => formatChartNumber(val),
+                                    grid: {
+                                      ...(chartOptions.grid || {}),
+                                      borderColor: theme === 'dark' ? '#333333' : '#e5e5e5',
+                                      padding: { left: 8, right: 8, top: -10, bottom: -5 },
                                     },
-                                  },
-                                }}
-                                series={chartSeries}
-                                type={chart.type || 'bar'}
-                                width="100%"
-                                height={chartHeight}
-                              />
+                                    tooltip: {
+                                      ...(chartOptions.tooltip || {}),
+                                      theme,
+                                      y: { formatter: (val) => formatTooltipNumber(val) },
+                                    },
+                                    xaxis: {
+                                      ...(chartOptions.xaxis || {}),
+                                      labels: {
+                                        ...(chartOptions.xaxis?.labels || {}),
+                                      },
+                                    },
+                                    yaxis: {
+                                      ...(chartOptions.yaxis || {}),
+                                      labels: {
+                                        ...(chartOptions.yaxis?.labels || {}),
+                                        formatter: (val) => formatChartNumber(val),
+                                      },
+                                    },
+                                  }}
+                                  series={chartSeries}
+                                  type={chart.type || 'bar'}
+                                  width="100%"
+                                  height={chartHeight}
+                                />
+                              </Suspense>
                             </div>
                           );
                         })}
@@ -806,8 +870,8 @@ function App() {
 
               {/* Follow-up loading indicator */}
               {followupLoading && (
-                <div className="loading-state followup-loading">
-                  <Loader2 className="animate-spin loading-icon" />
+                <div className="loading-state followup-loading" role="status" aria-live="polite">
+                  <Loader2 className="animate-spin loading-icon" aria-hidden="true" />
                   <p>Analyzing follow-up question...</p>
                 </div>
               )}
@@ -815,9 +879,11 @@ function App() {
               {/* Follow-up input bar */}
               {sessionId && (
                 <form onSubmit={handleFollowup} className="followup-form">
+                  <label className="sr-only" htmlFor="followup-question">Ask a follow-up question</label>
                   <div className="followup-input-wrapper">
-                    <MessageSquare size={16} className="followup-input-icon" />
+                    <MessageSquare size={16} className="followup-input-icon" aria-hidden="true" />
                     <input
+                      id="followup-question"
                       type="text"
                       placeholder="Ask a follow-up about this data..."
                       value={activeFollowupQuestion}
@@ -829,8 +895,8 @@ function App() {
                       disabled={followupLoading}
                     />
                   </div>
-                  <button type="submit" disabled={followupLoading || !activeFollowupQuestion.trim()}>
-                    {followupLoading ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+                  <button type="submit" aria-label="Send follow-up question" disabled={followupLoading || !activeFollowupQuestion.trim()}>
+                    {followupLoading ? <Loader2 size={16} className="animate-spin" aria-hidden="true" /> : <Send size={16} aria-hidden="true" />}
                   </button>
                 </form>
               )}

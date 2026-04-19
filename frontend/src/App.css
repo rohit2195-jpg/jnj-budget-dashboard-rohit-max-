@@ -74,6 +74,18 @@ html[data-theme="dark"] {
   overflow: hidden;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* ── Header ──────────────────────────────────────────────────────────────────── */
 .header {
   background-color: var(--bg-header);
@@ -239,6 +251,7 @@ html[data-theme="dark"] {
   white-space: nowrap;
   user-select: none;
   line-height: 1;
+  border: none;
 }
 
 /* Divider between the two buttons */
@@ -249,6 +262,11 @@ html[data-theme="dark"] {
 .upload-btn:hover {
   color: var(--primary);
   background-color: var(--primary-muted);
+}
+
+.upload-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* File upload button — subtle blue tint on hover */
@@ -295,6 +313,20 @@ html[data-theme="dark"] .upload-btn--folder:hover {
 .theme-toggle:hover {
   color: var(--text-main);
   background: var(--bg-card-inner);
+}
+
+.theme-toggle:focus-visible,
+.search-form button:focus-visible,
+.upload-btn:focus-visible,
+.new-analysis-btn:focus-visible,
+.sidebar-load:focus-visible,
+.sidebar-delete:focus-visible,
+.followup-form button:focus-visible,
+.followup-input-wrapper:focus-within,
+.dataset-picker select:focus-visible,
+.search-form input:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 /* ── Body row: sidebar + main ────────────────────────────────────────────────── */
@@ -355,7 +387,6 @@ html[data-theme="dark"] .upload-btn--folder:hover {
   gap: 0.5rem;
   padding: 0.5625rem 0.5rem;
   border-radius: 0.375rem;
-  cursor: pointer;
   transition: background-color 0.15s;
   position: relative;
   min-width: 0;
@@ -364,6 +395,20 @@ html[data-theme="dark"] .upload-btn--folder:hover {
 .sidebar-item:hover             { background-color: var(--bg-card-inner); }
 .sidebar-item.active            { background-color: var(--primary-muted); border-left: 3px solid var(--primary); padding-left: calc(0.5rem - 3px); }
 .sidebar-item:hover .sidebar-delete { opacity: 1; }
+
+.sidebar-load {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
 
 .sidebar-item-icon {
   color: var(--text-muted);
@@ -416,6 +461,10 @@ html[data-theme="dark"] .upload-btn--folder:hover {
   background-color: var(--error-bg);
 }
 
+.sidebar-item:focus-within .sidebar-delete {
+  opacity: 1;
+}
+
 /* ── Main content ────────────────────────────────────────────────────────────── */
 .main-content {
   flex: 1;
@@ -425,6 +474,23 @@ html[data-theme="dark"] .upload-btn--folder:hover {
   flex-direction: column;
   min-width: 0;
   background-color: var(--bg-page);
+}
+
+.info-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background-color: var(--primary-muted);
+  border: 1px solid var(--border);
+  color: var(--text-main);
+  padding: 0.875rem 1rem;
+  border-radius: var(--radius-inner);
+  margin-bottom: 1rem;
+}
+
+.info-icon {
+  color: var(--primary);
+  flex-shrink: 0;
 }
 
 /* ── Dashboard grid (2-column: charts left, right panel right) ──────────────── */
@@ -438,11 +504,41 @@ html[data-theme="dark"] .upload-btn--folder:hover {
 }
 
 @media (max-width: 1024px) {
+  .body-row {
+    flex-direction: column;
+  }
   .charts-grid {
     grid-template-columns: 1fr;
   }
   .sidebar {
-    display: none;
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 0.75rem 1rem;
+    gap: 0.75rem;
+    overflow-x: auto;
+    flex-direction: row;
+    align-items: center;
+  }
+  .sidebar-list {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+  .sidebar-empty {
+    padding: 0;
+    white-space: nowrap;
+  }
+  .sidebar-item {
+    min-width: 220px;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+  }
+  .new-analysis-btn {
+    margin: 0;
+    white-space: nowrap;
   }
   .dashboard-grid {
     flex-direction: column;
@@ -459,8 +555,15 @@ html[data-theme="dark"] .upload-btn--folder:hover {
 
 /* ── Header responsive: hide upload button labels at medium widths ─────────── */
 @media (max-width: 1100px) {
+  .header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
   .search-form {
-    max-width: 420px;
+    max-width: none;
+    width: 100%;
+    order: 3;
+    margin: 0;
   }
   .dataset-picker select {
     max-width: 140px;
@@ -631,6 +734,14 @@ html[data-theme="dark"] .chart-card:hover {
   margin: 0 0 0.5rem 0;
   text-align: center;
   color: var(--text-muted);
+}
+
+.chart-loading-placeholder {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
 }
 
 /* ── Loading & welcome states ────────────────────────────────────────────────── */
@@ -1165,10 +1276,15 @@ html[data-theme="dark"] .chart-card:hover {
 @media (max-width: 640px) {
   .header {
     padding: 0.75rem 1rem;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0.75rem;
   }
   .search-form {
-    max-width: 200px;
-    margin: 0 0.5rem;
+    order: 3;
+    max-width: none;
+    width: 100%;
+    margin: 0;
   }
   .search-form button {
     min-width: 70px;
@@ -1191,6 +1307,17 @@ html[data-theme="dark"] .chart-card:hover {
     width: 100%;
   }
   .dataset-picker {
-    display: none;
+    width: 100%;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .dataset-picker select {
+    max-width: none;
+    width: 100%;
+    order: 2;
+  }
+  .upload-btn-group {
+    margin-left: auto;
   }
 }

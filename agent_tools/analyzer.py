@@ -7,6 +7,23 @@ from google import genai
 from dotenv import load_dotenv
 from .llm_model import model
 import json
+from pipeline.state import sanitize_for_state
+
+
+def _repair_deprecated_pandas_offsets(code: str) -> str:
+    """
+    Patch common pandas 2.2+ deprecated offset aliases in generated analysis code.
+
+    Keep this narrow and mechanical so it only fixes known runtime breakages.
+    """
+    repaired = code
+    repaired = repaired.replace("resample('M')", "resample('ME')")
+    repaired = repaired.replace('resample("M")', 'resample("ME")')
+    repaired = repaired.replace("freq='M'", "freq='ME'")
+    repaired = repaired.replace('freq="M"', 'freq="ME"')
+    repaired = repaired.replace("freq = 'M'", "freq = 'ME'")
+    repaired = repaired.replace('freq = "M"', 'freq = "ME"')
+    return repaired
 
 
 def _extract_json_from_output(raw: str):
@@ -163,6 +180,8 @@ Each value must be one of these typed structures:
 
 RULES:
 - Convert ALL numpy types with .item() or float() before storing in results
+- If you resample monthly data, use pandas 'ME' instead of deprecated 'M'
+- If you use pd.Grouper with monthly frequency, use freq='ME'
 - For categorical/ranking: sort descending by value; keep top 14, collapse the rest into an "Other" entry
 - The LAST line of the function must be: import json; print(json.dumps(results))
 - Do NOT print anything else inside the function
@@ -207,6 +226,7 @@ def analyze_spending_data(file_paths):
         # clean response
         response = response.text
         response = response.strip('```').lstrip('python')
+        response = _repair_deprecated_pandas_offsets(response)
         print('------Code generated------')
         print(response)
         return response
@@ -224,11 +244,9 @@ def execute_analysis(code, *args, target_function=None, **kwargs):
 
     exec_globals = {}
 
-    try:
-        # Execute generated code
-        exec(code, exec_globals)
+    def _run_once(code_to_run):
+        exec(code_to_run, exec_globals)
 
-        # Collect functions
         functions = {
             name: obj
             for name, obj in exec_globals.items()
@@ -239,7 +257,6 @@ def execute_analysis(code, *args, target_function=None, **kwargs):
             print("No functions found in generated code.")
             return captured_output.getvalue()
 
-        # Select target function
         if target_function:
             if target_function not in functions:
                 print(f"Function '{target_function}' not found.")
@@ -254,7 +271,6 @@ def execute_analysis(code, *args, target_function=None, **kwargs):
                 return captured_output.getvalue()
             target_fn = next(iter(functions.values()))
 
-        # Validate required arguments
         sig = inspect.signature(target_fn)
         try:
             sig.bind(*args, **kwargs)
@@ -262,11 +278,26 @@ def execute_analysis(code, *args, target_function=None, **kwargs):
             print(f"Argument mismatch: {bind_error}")
             return captured_output.getvalue()
 
-        # Call function
         target_fn(*args, **kwargs)
 
+    try:
+        # Execute generated code
+        _run_once(code)
+
     except Exception as e:
-        print(f"An error occurred during execution: {e}")
+        if "Invalid frequency: M" in str(e):
+            repaired_code = _repair_deprecated_pandas_offsets(code)
+            if repaired_code != code:
+                print("Retrying analysis after patching deprecated pandas monthly frequency aliases.")
+                exec_globals = {}
+                try:
+                    _run_once(repaired_code)
+                except Exception as retry_error:
+                    print(f"An error occurred during execution: {retry_error}")
+            else:
+                print(f"An error occurred during execution: {e}")
+        else:
+            print(f"An error occurred during execution: {e}")
 
     finally:
         sys.stdout = old_stdout
@@ -277,6 +308,6 @@ def execute_analysis(code, *args, target_function=None, **kwargs):
 
     parsed = _extract_json_from_output(ans)
     if parsed is not None:
-        return parsed
+        return sanitize_for_state(parsed)
     warnings.warn("No JSON emitted; falling back to raw string", RuntimeWarning)
     return ans

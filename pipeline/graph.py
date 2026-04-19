@@ -4,7 +4,13 @@ from langgraph.graph import StateGraph, END
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.types import interrupt
 
-from pipeline.state import PipelineState, serialize_analysis_output, get_all_data_paths, get_all_manifests
+from pipeline.state import (
+    PipelineState,
+    serialize_analysis_output,
+    get_all_data_paths,
+    get_all_manifests,
+    sanitize_for_state,
+)
 
 # Existing agent imports
 from pre_processing.processing_agent import callPreProcessAgent
@@ -39,7 +45,7 @@ def preprocess_node(state: PipelineState) -> dict:
             manifest = callPreProcessAgent(dp)
             if manifest.get("status") == "error":
                 return {"error": f"Preprocessing failed for {dp}: {manifest.get('error', 'unknown')}"}
-            manifests.append(manifest)
+            manifests.append(sanitize_for_state(manifest))
         return {"manifests": manifests, "manifest": manifests[0], "error": None}
     except Exception as exc:
         return {"error": f"Preprocessing exception: {exc}"}
@@ -62,7 +68,7 @@ def plan_node(state: PipelineState) -> dict:
         )
         if not plan.get("analyses"):
             return {"error": "Planner returned an empty plan."}
-        return {"plan": plan, "error": None}
+        return {"plan": sanitize_for_state(plan), "error": None}
     except Exception as exc:
         return {"error": f"Planning exception: {exc}"}
 
@@ -106,7 +112,7 @@ def analyze_node(state: PipelineState) -> dict:
                 "error": f"Code execution failed: {output[:300]}",
                 "analysis_output": None,
             }
-        return {"analysis_output": output, "error": None}
+        return {"analysis_output": sanitize_for_state(output), "error": None}
     except Exception as exc:
         return {
             "error": f"Analysis exception: {exc}",
@@ -133,7 +139,7 @@ def forecast_node(state: PipelineState) -> dict:
     try:
         serialized = serialize_analysis_output(state.get("analysis_output"))
         forecast_output = create_forecast(state["question"], serialized)
-        return {"forecast_output": forecast_output}
+        return {"forecast_output": sanitize_for_state(forecast_output)}
     except Exception as exc:
         return {"forecast_output": {"forecasts": []}, "error": f"Forecast exception: {exc}"}
 
@@ -147,7 +153,7 @@ def graph_gen_node(state: PipelineState) -> dict:
         forecast_output = state.get("forecast_output")
         prior_chart_ids = state.get("prior_charts") if state.get("is_followup") else None
         graph_data = create_graph(state["question"], serialized, forecast_output, prior_chart_ids=prior_chart_ids)
-        return {"graph_data": graph_data}
+        return {"graph_data": sanitize_for_state(graph_data)}
     except Exception as exc:
         return {"graph_data": {"charts": []}, "error": f"Graph generation exception: {exc}"}
 
@@ -239,10 +245,10 @@ def after_analyze(state: PipelineState) -> str:
 
 
 def after_graph_gen(state: PipelineState) -> str:
-    """Route to full summarize or lightweight follow-up explanation."""
+    """Route follow-ups to explanation; initial runs end and summarize outside the graph."""
     if state.get("is_followup"):
         return "followup_explain"
-    return "summarize"
+    return END
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -299,7 +305,7 @@ def build_pipeline():
     # Graph gen: follow-ups → followup_explain, initial → summarize
     builder.add_conditional_edges(
         "graph_gen", after_graph_gen,
-        {"summarize": "summarize", "followup_explain": "followup_explain"},
+        {"followup_explain": "followup_explain", END: END},
     )
 
     builder.add_edge("summarize",        END)

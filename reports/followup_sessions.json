@@ -555,5 +555,128 @@
       "Spending Summary by Ticket Class",
       "Average Price by Days Before Departure"
     ]
+  },
+  "f408c99b-efca-41d8-8116-59dbd8eebf00": {
+    "manifest": {
+      "data_path": "pre_processing/processed_data/cleaned_USA_Housing_Dataset_db73d0b9.json",
+      "source_file": "data/USA_Housing_Dataset.csv",
+      "columns": [
+        "date",
+        "price",
+        "bedrooms",
+        "bathrooms",
+        "sqft_living",
+        "sqft_lot",
+        "floors",
+        "waterfront",
+        "view",
+        "condition",
+        "sqft_above",
+        "sqft_basement",
+        "yr_built",
+        "yr_renovated",
+        "street",
+        "city",
+        "statezip",
+        "country"
+      ],
+      "dtypes": {
+        "date": "datetime64[us]",
+        "price": "int64",
+        "bedrooms": "int64",
+        "bathrooms": "float64",
+        "sqft_living": "int64",
+        "sqft_lot": "int64",
+        "floors": "int64",
+        "waterfront": "int64",
+        "view": "int64",
+        "condition": "int64",
+        "sqft_above": "int64",
+        "sqft_basement": "int64",
+        "yr_built": "int64",
+        "yr_renovated": "int64",
+        "street": "str",
+        "city": "str",
+        "statezip": "str",
+        "country": "str"
+      },
+      "row_count": 4140,
+      "summary": "The dataset contains 4,140 rows and 18 columns, including: `date`, `price`, `bedrooms`, `bathrooms`, `sqft_living`, `sqft_lot`, `floors`, `waterfront`, `view`, `condition`, `sqft_above`, `sqft_basement`, `yr_built`, `yr_renovated`, `street`, `city`, `statezip`, and `country`. This dataset appears to contain information about housing prices and characteristics, likely for real estate analysis. Notable characteristics include a mix of numerical and categorical data, providing a comprehensive overview of each property's features and location.",
+      "created_at": "2026-04-19T12:45:07.819614",
+      "status": "success",
+      "file_hash": "a238524a07c89fb270d45f2f8d24b887"
+    },
+    "manifests": [
+      {
+        "data_path": "pre_processing/processed_data/cleaned_USA_Housing_Dataset_db73d0b9.json",
+        "source_file": "data/USA_Housing_Dataset.csv",
+        "columns": [
+          "date",
+          "price",
+          "bedrooms",
+          "bathrooms",
+          "sqft_living",
+          "sqft_lot",
+          "floors",
+          "waterfront",
+          "view",
+          "condition",
+          "sqft_above",
+          "sqft_basement",
+          "yr_built",
+          "yr_renovated",
+          "street",
+          "city",
+          "statezip",
+          "country"
+        ],
+        "dtypes": {
+          "date": "datetime64[us]",
+          "price": "int64",
+          "bedrooms": "int64",
+          "bathrooms": "float64",
+          "sqft_living": "int64",
+          "sqft_lot": "int64",
+          "floors": "int64",
+          "waterfront": "int64",
+          "view": "int64",
+          "condition": "int64",
+          "sqft_above": "int64",
+          "sqft_basement": "int64",
+          "yr_built": "int64",
+          "yr_renovated": "int64",
+          "street": "str",
+          "city": "str",
+          "statezip": "str",
+          "country": "str"
+        },
+        "row_count": 4140,
+        "summary": "The dataset contains 4,140 rows and 18 columns, including: `date`, `price`, `bedrooms`, `bathrooms`, `sqft_living`, `sqft_lot`, `floors`, `waterfront`, `view`, `condition`, `sqft_above`, `sqft_basement`, `yr_built`, `yr_renovated`, `street`, `city`, `statezip`, and `country`. This dataset appears to contain information about housing prices and characteristics, likely for real estate analysis. Notable characteristics include a mix of numerical and categorical data, providing a comprehensive overview of each property's features and location.",
+        "created_at": "2026-04-19T12:45:07.819614",
+        "status": "success",
+        "file_hash": "a238524a07c89fb270d45f2f8d24b887"
+      }
+    ],
+    "data_path": "data/USA_Housing_Dataset.csv",
+    "data_paths": [
+      "data/USA_Housing_Dataset.csv"
+    ],
+    "conversation_history": [
+      {
+        "question": "Perform a thourough analsis of the data and retrieve insightful insights",
+        "summary_snippet": "# Housing Market Analysis\n\n## Executive Summary\nThis report analyzes a dataset of **4140 count** total housing listings. The average house price across all listings is **$553,062.86 USD**, with a median price of $460,000.00 USD, indicating a market skewed towards higher-value properties. Key factors"
+      }
+    ],
+    "all_chart_ids": [
+      "avg_price_by_city",
+      "monthly_avg_price",
+      "price_by_waterfront",
+      "price_vs_sqft_living",
+      "listings_by_city",
+      "price_vs_yr_built",
+      "monthly_sales_volume",
+      "price_by_condition_and_renovation",
+      "monthly_avg_price"
+    ]
   }
 }
