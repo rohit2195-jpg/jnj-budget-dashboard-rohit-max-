@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json as _json
+import threading
 from langchain.agents import create_agent
 from dotenv import load_dotenv
 
@@ -12,6 +13,7 @@ from forecastAgent.tools import (
 )
 
 load_dotenv()
+FORECAST_AGENT_LOCK = threading.Lock()
 
 
 def _build_forecast_agent():
@@ -56,26 +58,27 @@ def create_forecast(user_question: str, analysis_output_str: str) -> dict:
     Returns {"forecasts": [...]} — empty list if no timeseries data exists.
     Skips the LLM call entirely when no timeseries data is detected.
     """
-    reset_forecast_registry()
+    with FORECAST_AGENT_LOCK:
+        reset_forecast_registry()
 
-    # Short-circuit: avoid the LLM call when there is nothing to forecast
-    if not _has_timeseries(analysis_output_str):
-        return {"forecasts": []}
+        # Short-circuit: avoid the LLM call when there is nothing to forecast
+        if not _has_timeseries(analysis_output_str):
+            return {"forecasts": []}
 
-    try:
-        agent = _build_forecast_agent()
-        agent.invoke({
-            "messages": [
-                {"role": "system", "content": FORECAST_SYSTEM},
-                {"role": "user", "content": f"""User question: "{user_question}"
+        try:
+            agent = _build_forecast_agent()
+            agent.invoke({
+                "messages": [
+                    {"role": "system", "content": FORECAST_SYSTEM},
+                    {"role": "user", "content": f"""User question: "{user_question}"
 
 Analysis results (JSON):
 {analysis_output_str}
 
 For each timeseries entry, call forecast_timeseries. Skip all other types."""},
-            ]
-        })
-    except Exception as exc:
-        return {"forecasts": [], "error": str(exc)}
+                ]
+            })
+        except Exception as exc:
+            return {"forecasts": [], "error": str(exc)}
 
-    return get_forecast_registry()
+        return get_forecast_registry()

@@ -7,7 +7,14 @@ import os
 import pandas as pd
 from dotenv import load_dotenv
 from agent_tools.llm_model import code_llm
-from pre_processing.tools import generate_analysis_code, execute_analysis_tool, _compute_output_path, _compute_manifest_path, compute_file_hash
+from pre_processing.tools import (
+    generate_analysis_code,
+    execute_analysis_tool,
+    _compute_output_path,
+    _compute_manifest_path,
+    compute_file_hash,
+    load_dataframe_for_path,
+)
 
 load_dotenv()
 
@@ -66,7 +73,7 @@ def callPreProcessAgent(data_path):
             "error": f"Preprocessing did not produce expected output file at: {output_path}"
         }
 
-    df = pd.read_json(output_path)
+    df = load_dataframe_for_path(output_path)
     manifest = {
         "data_path": output_path,
         "source_file": data_path,

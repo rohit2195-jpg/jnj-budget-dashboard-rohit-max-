@@ -1,5 +1,8 @@
 import json
 import os
+import re
+import tempfile
+import threading
 import uuid
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -13,12 +16,16 @@ from pipeline.graph import (
     graph_gen_node,
     followup_explain_node,
     _question_wants_forecast,
+    MAX_RETRIES,
 )
 from pipeline.state import serialize_analysis_output
 from summarizerAgent.summarizer_agent import summarize_results
+from agent_tools.llm_model import model
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100 MB upload limit
+MAX_UPLOAD_BYTES = 250 * 1024 * 1024
+
+app.config['MAX_CONTENT_LENGTH'] = MAX_UPLOAD_BYTES  # 250 MB upload limit
 DEFAULT_CORS_ORIGINS = ['http://localhost:5173', 'http://127.0.0.1:5173']
 CORS(
     app,
@@ -37,8 +44,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_DIR = os.path.join(BASE_DIR, 'data')
 REPORTS_DIR = os.path.join(BASE_DIR, 'reports')
 SESSIONS_FILE = os.path.join(REPORTS_DIR, 'followup_sessions.json')
+DATASET_ALIASES_FILE = os.path.join(REPORTS_DIR, 'dataset_aliases.json')
 ALLOWED_EXTENSIONS = {'.csv', '.json'}
 MAX_FILES_PER_ANALYSIS = 10
+SESSION_LOCK = threading.Lock()
+DATASET_ALIAS_LOCK = threading.Lock()
+CONSUMED_APPROVAL_THREADS = set()
 
 
 def _resolve_data_path(requested_path):
@@ -63,6 +74,246 @@ def _to_repo_relative(abs_path):
     return os.path.relpath(abs_path, BASE_DIR)
 
 
+def _strip_dataset_extension(name):
+    if not name:
+        return ""
+    lowered = name.lower()
+    for ext in sorted(ALLOWED_EXTENSIONS, key=len, reverse=True):
+        if lowered.endswith(ext):
+            return name[:-len(ext)]
+    return name
+
+
+def _derive_dataset_name(dataset_path):
+    if not dataset_path:
+        return "Unknown dataset"
+    normalized = dataset_path.replace('\\', '/').rstrip('/')
+    leaf = normalized.split('/')[-1] if normalized else dataset_path
+    leaf = _strip_dataset_extension(leaf)
+    return leaf or "Unknown dataset"
+
+
+def _friendly_dataset_alias(dataset_name):
+    cleaned = re.sub(r'[_-]+', ' ', dataset_name or '')
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    if not cleaned:
+        return None
+    parts = []
+    for token in cleaned.split(' '):
+        if token.isupper() and len(token) <= 4:
+            parts.append(token)
+        else:
+            parts.append(token.capitalize())
+    alias = ' '.join(parts)
+    return alias[:80] if alias else None
+
+
+def _load_dataset_aliases():
+    if not os.path.exists(DATASET_ALIASES_FILE):
+        return {}
+
+    try:
+        with open(DATASET_ALIASES_FILE, 'r', encoding='utf-8') as fh:
+            raw = json.load(fh)
+        if not isinstance(raw, dict):
+            return {}
+        return {
+            str(path): str(alias).strip()
+            for path, alias in raw.items()
+            if isinstance(path, str) and isinstance(alias, str) and str(alias).strip()
+        }
+    except Exception as exc:
+        print(f"Warning: failed to load dataset aliases: {exc}")
+        return {}
+
+
+def _save_dataset_aliases():
+    try:
+        os.makedirs(REPORTS_DIR, exist_ok=True)
+        fd, temp_path = tempfile.mkstemp(prefix='dataset_aliases_', suffix='.json', dir=REPORTS_DIR)
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as fh:
+                json.dump(dataset_aliases, fh, indent=2)
+            os.replace(temp_path, DATASET_ALIASES_FILE)
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+    except Exception as exc:
+        print(f"Warning: failed to persist dataset aliases: {exc}")
+
+
+def _generate_dataset_alias(dataset_name, manifests=None):
+    friendly = _friendly_dataset_alias(dataset_name)
+    manifest_lines = []
+    for manifest in (manifests or [])[:3]:
+        if not isinstance(manifest, dict):
+            continue
+        columns = [str(col) for col in (manifest.get("columns") or [])[:8]]
+        row_count = manifest.get("row_count")
+        summary = str(manifest.get("summary") or "").strip()
+        line = f"- file: {manifest.get('source_file') or manifest.get('data_path') or dataset_name}"
+        if row_count is not None:
+            line += f"; rows: {row_count}"
+        if columns:
+            line += f"; columns: {', '.join(columns)}"
+        if summary:
+            line += f"; summary: {summary[:220]}"
+        manifest_lines.append(line)
+
+    prompt = (
+        "Create a short, human-friendly dataset alias.\n"
+        "Rules:\n"
+        "- Return only the alias text\n"
+        "- 2 to 6 words\n"
+        "- No quotes, no colon, no markdown\n"
+        "- Prefer descriptive business language over file naming\n"
+        "- Reuse well-known acronyms when helpful\n"
+        f"- Base dataset name: {dataset_name}\n"
+    )
+    if manifest_lines:
+        prompt += "Dataset details:\n" + "\n".join(manifest_lines) + "\n"
+
+    try:
+        response = model.invoke(prompt)
+        raw = response.content if hasattr(response, "content") else getattr(response, "text", "")
+        if isinstance(raw, list):
+            raw = raw[0].get("text", "") if raw else ""
+        alias = re.sub(r'\s+', ' ', str(raw).strip()).strip('"\'')
+        alias = alias[:80].strip()
+        if alias:
+            return alias
+    except Exception as exc:
+        print(f"Warning: failed to generate dataset alias for '{dataset_name}': {exc}")
+
+    return friendly
+
+
+def _get_dataset_alias(dataset_path, dataset_name, manifests=None):
+    if not dataset_path:
+        return None
+
+    with DATASET_ALIAS_LOCK:
+        cached = dataset_aliases.get(dataset_path)
+        if cached:
+            return cached
+
+    alias = _generate_dataset_alias(dataset_name, manifests=manifests)
+    if not alias:
+        return None
+
+    with DATASET_ALIAS_LOCK:
+        existing = dataset_aliases.get(dataset_path)
+        if existing:
+            return existing
+        dataset_aliases[dataset_path] = alias
+        _save_dataset_aliases()
+    return alias
+
+
+def _derive_dataset_path(requested_dataset_path, data_paths):
+    if requested_dataset_path:
+        normalized = requested_dataset_path.replace('\\', '/')
+        return normalized if not normalized.endswith('/') else normalized.rstrip('/') + '/'
+    if len(data_paths) == 1:
+        return data_paths[0]
+
+    common_path = os.path.commonpath([os.path.join(BASE_DIR, dp) for dp in data_paths])
+    if os.path.isfile(common_path):
+        common_path = os.path.dirname(common_path)
+    return _to_repo_relative(common_path).replace('\\', '/').rstrip('/') + '/'
+
+
+def _session_source_paths(payload):
+    if not isinstance(payload, dict):
+        return []
+
+    source_paths = []
+    for key in ("data_paths",):
+        values = payload.get(key)
+        if isinstance(values, list):
+            source_paths.extend(str(value) for value in values if isinstance(value, str) and value)
+
+    for manifest in (payload.get("manifests") or []):
+        if isinstance(manifest, dict):
+            source = manifest.get("source_file") or manifest.get("data_path")
+            if isinstance(source, str) and source:
+                source_paths.append(source)
+
+    manifest = payload.get("manifest")
+    if isinstance(manifest, dict):
+        source = manifest.get("source_file") or manifest.get("data_path")
+        if isinstance(source, str) and source:
+            source_paths.append(source)
+
+    data_path = payload.get("data_path")
+    if isinstance(data_path, str) and data_path:
+        source_paths.append(data_path)
+
+    deduped = []
+    seen = set()
+    for path in source_paths:
+        normalized = path.replace('\\', '/')
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        deduped.append(normalized)
+    return deduped
+
+
+def _infer_dataset_path_from_session_payload(payload):
+    if not isinstance(payload, dict):
+        return ""
+
+    explicit = payload.get("dataset_path")
+    if isinstance(explicit, str) and explicit:
+        normalized = explicit.replace('\\', '/')
+        return normalized if not normalized.endswith('/') else normalized.rstrip('/') + '/'
+
+    source_paths = _session_source_paths(payload)
+    if not source_paths:
+        return ""
+    if len(source_paths) == 1:
+        return source_paths[0]
+
+    abs_paths = []
+    for path in source_paths:
+        try:
+            abs_paths.append(_resolve_data_path(path))
+        except ValueError:
+            continue
+
+    if len(abs_paths) < 2:
+        common_rel = os.path.commonpath(source_paths)
+        if common_rel and common_rel != '.':
+            if any(path != common_rel for path in source_paths):
+                if os.path.splitext(common_rel)[1].lower() in ALLOWED_EXTENSIONS:
+                    common_rel = os.path.dirname(common_rel)
+                return common_rel.replace('\\', '/').rstrip('/') + '/'
+            return common_rel.replace('\\', '/')
+        return source_paths[0]
+
+    common_path = os.path.commonpath(abs_paths)
+    if os.path.isfile(common_path):
+        common_path = os.path.dirname(common_path)
+    return _to_repo_relative(common_path).replace('\\', '/').rstrip('/') + '/'
+
+
+def _get_session_dataset_metadata(payload, ensure_alias=False):
+    dataset_path = _infer_dataset_path_from_session_payload(payload)
+    dataset_name = payload.get("dataset_name") or _derive_dataset_name(dataset_path)
+    dataset_alias = payload.get("dataset_alias")
+    manifests = payload.get("manifests")
+    if not manifests and payload.get("manifest"):
+        manifests = [payload.get("manifest")]
+    if ensure_alias and dataset_path and not dataset_alias:
+        dataset_alias = _get_dataset_alias(dataset_path, dataset_name, manifests=manifests)
+    return {
+        "dataset_path": dataset_path or None,
+        "dataset_name": dataset_name or None,
+        "dataset_alias": dataset_alias or None,
+    }
+
+
 def _normalize_session(payload):
     """Keep persisted session payloads backward-compatible and minimal."""
     if not isinstance(payload, dict):
@@ -72,11 +323,15 @@ def _normalize_session(payload):
     data_paths = payload.get("data_paths") or ([data_path] if data_path else [])
     manifest = payload.get("manifest")
     manifests = payload.get("manifests") or ([manifest] if manifest else [])
+    dataset_meta = _get_session_dataset_metadata(payload, ensure_alias=False)
     return {
         "manifest": manifest,
         "manifests": manifests,
         "data_path": data_path,
         "data_paths": data_paths,
+        "dataset_path": dataset_meta["dataset_path"] or data_path,
+        "dataset_name": dataset_meta["dataset_name"] or _derive_dataset_name(dataset_meta["dataset_path"] or data_path),
+        "dataset_alias": dataset_meta["dataset_alias"],
         "conversation_history": payload.get("conversation_history") or [],
         "all_chart_ids": payload.get("all_chart_ids") or [],
     }
@@ -106,10 +361,42 @@ def _save_sessions():
     """Persist follow-up sessions so localStorage conversations keep working."""
     try:
         os.makedirs(REPORTS_DIR, exist_ok=True)
-        with open(SESSIONS_FILE, 'w', encoding='utf-8') as fh:
-            json.dump(sessions, fh, indent=2)
+        fd, temp_path = tempfile.mkstemp(prefix='followup_sessions_', suffix='.json', dir=REPORTS_DIR)
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as fh:
+                json.dump(sessions, fh, indent=2)
+            os.replace(temp_path, SESSIONS_FILE)
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
     except Exception as exc:
         print(f"Warning: failed to persist follow-up sessions: {exc}")
+
+
+def _push_warning(state, message):
+    warnings = list(state.get("warnings") or [])
+    warnings.append(message)
+    state["warnings"] = warnings
+
+
+def _dedupe_charts(charts, prior_chart_ids=None):
+    seen = set(prior_chart_ids or [])
+    deduped = []
+    for idx, chart in enumerate(charts or []):
+        if not isinstance(chart, dict):
+            continue
+        chart_id = str(chart.get("id") or f"chart-{idx + 1}")
+        if chart_id in seen:
+            original_id = chart_id
+            suffix = 2
+            while f"{original_id}-{suffix}" in seen:
+                suffix += 1
+            chart = dict(chart)
+            chart_id = f"{original_id}-{suffix}"
+            chart["id"] = chart_id
+        seen.add(chart_id)
+        deduped.append(chart)
+    return deduped
 
 
 def _run_postplan_nodes(state):
@@ -122,19 +409,42 @@ def _run_postplan_nodes(state):
     """
     working = dict(state)
 
-    analysis_update = analyze_node(working)
-    working.update(analysis_update)
+    working["warnings"] = list(working.get("warnings") or [])
+
+    for _ in range(MAX_RETRIES + 1):
+        analysis_update = analyze_node(working)
+        working.update(analysis_update)
+        if not working.get("error"):
+            break
+        if working.get("retry_count", 0) >= MAX_RETRIES:
+            return working
+        working["retry_count"] = working.get("retry_count", 0) + 1
+        working["analysis_output"] = None
+        working["error"] = None
+
     if working.get("error"):
         return working
 
     if not working.get("is_followup") or _question_wants_forecast(working.get("question", "")):
         forecast_update = forecast_node(working)
         working.update(forecast_update)
+        if working.get("error"):
+            _push_warning(working, working["error"])
+            working["error"] = None
 
     graph_update = graph_gen_node(working)
     working.update(graph_update)
     if working.get("error") and not working.get("graph_data"):
         return working
+    if working.get("error"):
+        _push_warning(working, working["error"])
+        working["error"] = None
+
+    graph_data = working.get("graph_data") or {"charts": []}
+    deduped_charts = _dedupe_charts(graph_data.get("charts", []), working.get("prior_charts"))
+    if len(deduped_charts) != len(graph_data.get("charts", [])):
+        _push_warning(working, "Duplicate chart ids were remapped to keep dashboard charts unique.")
+    working["graph_data"] = {**graph_data, "charts": deduped_charts}
 
     if working.get("is_followup"):
         explain_update = followup_explain_node(working)
@@ -146,11 +456,12 @@ def _run_postplan_nodes(state):
 # Follow-up session store.
 # Maps session_id -> {manifest, data_path, conversation_history, all_chart_ids}
 sessions = _load_sessions()
+dataset_aliases = _load_dataset_aliases()
 
 
 @app.errorhandler(413)
 def request_entity_too_large(_):
-    return jsonify({'error': 'File too large. Maximum size is 100 MB.'}), 413
+    return jsonify({'error': 'File too large. Maximum size is 250 MB.'}), 413
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -186,6 +497,7 @@ def list_datasets():
                 # Only list top-level files individually
                 datasets.append({
                     'name': display_name,
+                    'display_name': _derive_dataset_name(rel_path),
                     'path': rel_path,
                     'size': os.path.getsize(abs_path),
                     'type': 'file',
@@ -198,6 +510,7 @@ def list_datasets():
                                          os.path.dirname(DATA_DIR))
             datasets.append({
                 'name': folder_name + '/',
+                'display_name': _derive_dataset_name(folder_rel + '/'),
                 'path': folder_rel + '/',
                 'type': 'folder',
                 'file_count': len(file_list),
@@ -206,6 +519,25 @@ def list_datasets():
 
     datasets.sort(key=lambda d: d['name'].lower())
     return jsonify({'datasets': datasets}), 200
+
+
+@app.route('/api/sessions/<session_id>/dataset', methods=['GET'])
+def session_dataset_metadata(session_id):
+    with SESSION_LOCK:
+        session = sessions.get(session_id)
+        if session is None:
+            return jsonify({'error': 'Session not found'}), 404
+
+        dataset_meta = _get_session_dataset_metadata(session, ensure_alias=True)
+        changed = any(session.get(key) != value for key, value in dataset_meta.items())
+        if changed:
+            session.update(dataset_meta)
+            _save_sessions()
+
+    return jsonify({
+        'session_id': session_id,
+        **dataset_meta,
+    }), 200
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -312,6 +644,7 @@ def start_analysis():
         user_question = data.get('question')
         filepaths = data.get('filepaths')  # list of paths (multi-file)
         filepath = data.get('filepath', 'data/census/Dataset.csv')  # single path (backward compat)
+        requested_dataset_path = data.get('dataset_path')
 
         if not user_question:
             return jsonify({"error": "Missing 'question' in request body"}), 400
@@ -354,6 +687,9 @@ def start_analysis():
             if not os.path.exists(os.path.join(BASE_DIR, dp)):
                 return jsonify({"error": f"File not found: '{dp}'"}), 404
 
+        dataset_path = _derive_dataset_path(requested_dataset_path, data_paths)
+        dataset_name = _derive_dataset_name(dataset_path)
+
         thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": thread_id}}
 
@@ -361,6 +697,8 @@ def start_analysis():
             "question":    user_question,
             "data_path":   data_paths[0],
             "data_paths":  data_paths,
+            "dataset_path": dataset_path,
+            "dataset_name": dataset_name,
             "retry_count": 0,
             "error":       None,
             "approved":    None,
@@ -438,10 +776,13 @@ def resume_analysis():
         is_interrupted = any(bool(task.interrupts) for task in graph_state.tasks)
         if not is_interrupted:
             return jsonify({"error": "No pending approval found for this thread_id."}), 400
+        if thread_id in CONSUMED_APPROVAL_THREADS:
+            return jsonify({"error": "This approval token has already been used."}), 400
 
         print(f"[{thread_id[:8]}] Resuming with approved={approved}")
 
         if not approved:
+            CONSUMED_APPROVAL_THREADS.add(thread_id)
             return jsonify({"status": "rejected"}), 200
 
         # Resume only the approval checkpoint, then run the remaining nodes
@@ -451,6 +792,7 @@ def resume_analysis():
         base_values["approved"] = True
         base_values["error"] = None
         final_values = _run_postplan_nodes(base_values)
+        CONSUMED_APPROVAL_THREADS.add(thread_id)
 
         if final_values.get("error") and not final_values.get("summary"):
             return jsonify({"status": "error", "error": final_values["error"]}), 500
@@ -470,33 +812,49 @@ def resume_analysis():
             except Exception as exc:
                 return jsonify({"status": "error", "error": f"Summarization exception: {exc}"}), 500
 
+        dataset_path = final_values.get("dataset_path") or final_values.get("data_path", "")
+        dataset_name = final_values.get("dataset_name") or _derive_dataset_name(dataset_path)
+        dataset_alias = final_values.get("dataset_alias") or _get_dataset_alias(
+            dataset_path,
+            dataset_name,
+            manifests=final_values.get("manifests"),
+        )
+
         # Create a session for follow-up questions
         session_id = str(uuid.uuid4())
         graph_data = final_values.get("graph_data", {"charts": []})
         original_question = final_values.get("question", "")
 
-        sessions[session_id] = {
-            "manifest":             final_values.get("manifest"),
-            "manifests":            final_values.get("manifests"),
-            "data_path":            final_values.get("data_path", ""),
-            "data_paths":           final_values.get("data_paths"),
-            "conversation_history": [
-                {
-                    "question":        original_question,
-                    "summary_snippet": summary_text[:300],
-                }
-            ],
-            "all_chart_ids": [c.get("id", "") for c in graph_data.get("charts", [])],
-        }
-        _save_sessions()
+        with SESSION_LOCK:
+            sessions[session_id] = {
+                "manifest":             final_values.get("manifest"),
+                "manifests":            final_values.get("manifests"),
+                "data_path":            final_values.get("data_path", ""),
+                "data_paths":           final_values.get("data_paths"),
+                "dataset_path":         dataset_path,
+                "dataset_name":         dataset_name,
+                "dataset_alias":        dataset_alias,
+                "conversation_history": [
+                    {
+                        "question":        original_question,
+                        "summary_snippet": summary_text[:300],
+                    }
+                ],
+                "all_chart_ids": [c.get("id", "") for c in graph_data.get("charts", [])],
+            }
+            _save_sessions()
 
         return jsonify({
             "status":          "complete",
             "success":         True,
             "session_id":      session_id,
+            "dataset_path":    dataset_path,
+            "dataset_name":    dataset_name,
+            "dataset_alias":   dataset_alias,
             "summary":         summary_text,
             "graphs":          graph_data,
             "forecast_output": final_values.get("forecast_output", {"forecasts": []}),
+            "warnings":        final_values.get("warnings", []),
         }), 200
 
     except Exception as exc:
@@ -531,7 +889,8 @@ def followup_analysis():
         if not session_id or session_id not in sessions:
             return jsonify({"error": "Invalid or expired session_id"}), 400
 
-        session = sessions[session_id]
+        with SESSION_LOCK:
+            session = dict(sessions[session_id])
 
         thread_id = str(uuid.uuid4())
         config = {"configurable": {"thread_id": thread_id}}
@@ -540,6 +899,9 @@ def followup_analysis():
             "question":             user_question,
             "data_path":            session["data_path"],
             "data_paths":           session.get("data_paths") or [session["data_path"]],
+            "dataset_path":         session.get("dataset_path") or session["data_path"],
+            "dataset_name":         session.get("dataset_name") or _derive_dataset_name(session.get("dataset_path") or session["data_path"]),
+            "dataset_alias":        session.get("dataset_alias"),
             "manifest":             session["manifest"],
             "manifests":            session.get("manifests") or ([session["manifest"]] if session["manifest"] else []),
             "is_followup":          True,
@@ -561,16 +923,19 @@ def followup_analysis():
         explanation = final_values.get("followup_explanation", "")
 
         # Update session history (cap at 5 entries)
-        session["conversation_history"].append({
-            "question":        user_question,
-            "summary_snippet": explanation[:300],
-        })
-        if len(session["conversation_history"]) > 5:
-            session["conversation_history"] = session["conversation_history"][-5:]
+        with SESSION_LOCK:
+            live_session = sessions.get(session_id)
+            if live_session is None:
+                return jsonify({"error": "Invalid or expired session_id"}), 400
+            live_session["conversation_history"].append({
+                "question":        user_question,
+                "summary_snippet": explanation[:300],
+            })
+            if len(live_session["conversation_history"]) > 5:
+                live_session["conversation_history"] = live_session["conversation_history"][-5:]
 
-        # Track new chart IDs
-        session["all_chart_ids"].extend(c.get("id", "") for c in new_charts)
-        _save_sessions()
+            live_session["all_chart_ids"].extend(c.get("id", "") for c in new_charts)
+            _save_sessions()
 
         forecast_output = final_values.get("forecast_output", {"forecasts": []})
 
@@ -579,6 +944,7 @@ def followup_analysis():
             "new_charts":      new_charts,
             "explanation":     explanation,
             "forecast_output": forecast_output,
+            "warnings":        final_values.get("warnings", []),
         }), 200
 
     except Exception as exc:

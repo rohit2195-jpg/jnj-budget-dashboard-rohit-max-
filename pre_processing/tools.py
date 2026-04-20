@@ -2,12 +2,12 @@
 import os
 import hashlib
 from pathlib import Path
+import json
 import pandas as pd
 from google import genai
 from dotenv import load_dotenv
 from agent_tools.llm_model import model
 from langchain.tools import tool
-import json
 
 
 def _path_suffix(data_path: str) -> str:
@@ -37,6 +37,40 @@ def compute_file_hash(data_path: str) -> str:
     return h.hexdigest()
 
 
+def load_dataframe_for_path(data_path: str) -> pd.DataFrame:
+    """
+    Load a CSV/JSON dataframe defensively.
+
+    LLM-generated preprocessing code is instructed to save JSON records, but in
+    practice pandas can still emit line-delimited JSON or other JSON shapes.
+    Fall back through the common variants before surfacing an exception.
+    """
+    if data_path.lower().endswith('.csv'):
+        return pd.read_csv(data_path)
+
+    try:
+        return pd.read_json(data_path)
+    except ValueError as first_error:
+        errors = [f"default read_json failed: {first_error}"]
+
+        try:
+            return pd.read_json(data_path, lines=True)
+        except ValueError as second_error:
+            errors.append(f"lines=True failed: {second_error}")
+
+        with open(data_path, 'r', encoding='utf-8') as f:
+            raw = json.load(f)
+
+        if isinstance(raw, list):
+            return pd.DataFrame(raw)
+        if isinstance(raw, dict):
+            if all(isinstance(value, list) for value in raw.values()):
+                return pd.DataFrame(raw)
+            return pd.DataFrame([raw])
+
+        raise ValueError("; ".join(errors) + f"; unsupported JSON payload type: {type(raw).__name__}")
+
+
 @tool
 def generate_analysis_code(data_path: str) -> str:
     """
@@ -58,10 +92,7 @@ def generate_analysis_code(data_path: str) -> str:
     output_path = _compute_output_path(data_path)
 
     try:
-        if data_path.lower().endswith('.csv'):
-            df = pd.read_csv(data_path)
-        else:
-            df = pd.read_json(data_path)
+        df = load_dataframe_for_path(data_path)
         df_header = df.columns.tolist()
         df_first_rows = df.head(5).to_string()
     except Exception as e:
@@ -93,6 +124,8 @@ def process_data(file_path):
     # 1. Drop duplicate rows
     # 2. Handle nulls (drop or fill based on column semantics)
     # 3. Fix dtypes (parse date strings, coerce numerics)
+    # 4. Avoid chained assignment and avoid inplace=True on Series methods
+    #    Example: use df[col] = df[col].fillna(value) instead of df[col].fillna(value, inplace=True)
     # IMPORTANT: Do NOT rename columns — downstream code uses the original names: {df_header}
 
     os.makedirs('pre_processing/processed_data', exist_ok=True)

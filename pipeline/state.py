@@ -21,6 +21,9 @@ class PipelineState(TypedDict, total=False):
     question:        str            # User's natural-language question
     data_path:       str            # Path to the raw data file (first file, backward compat)
     data_paths:      Optional[list] # All raw file paths (multi-file support)
+    dataset_path:    Optional[str]  # Canonical dataset path selected in the UI
+    dataset_name:    Optional[str]  # Human display name for the dataset
+    dataset_alias:   Optional[str]  # AI/friendly alias reused per dataset
 
     # ── node outputs ─────────────────────────────────────────────────────
     manifest:        Optional[dict]                 # Output of callPreProcessAgent (first file, backward compat)

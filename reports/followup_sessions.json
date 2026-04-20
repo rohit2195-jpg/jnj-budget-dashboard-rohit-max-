@@ -64,6 +64,9 @@
     "data_paths": [
       "data/airline_ticket_prices_dataset.csv"
     ],
+    "dataset_path": "data/airline_ticket_prices_dataset.csv",
+    "dataset_name": "airline_ticket_prices_dataset",
+    "dataset_alias": "Airline Ticket Pricing Data",
     "conversation_history": [
       {
         "question": "perform analysis on this dataset please",
@@ -468,6 +471,9 @@
       "data/upload_4930ba83/reviews.csv",
       "data/upload_4930ba83/sessions.csv"
     ],
+    "dataset_path": "data/upload_4930ba83/",
+    "dataset_name": "upload_4930ba83",
+    "dataset_alias": "E-commerce Sales and Inventory Data",
     "conversation_history": [
       {
         "question": "Analyse this dataset for me and get insights",
@@ -544,6 +550,9 @@
     "data_paths": [
       "data/airline_ticket_prices_dataset.csv"
     ],
+    "dataset_path": "data/airline_ticket_prices_dataset.csv",
+    "dataset_name": "airline_ticket_prices_dataset",
+    "dataset_alias": null,
     "conversation_history": [
       {
         "question": "How much was spent on education in 2023?",
@@ -661,6 +670,9 @@
     "data_paths": [
       "data/USA_Housing_Dataset.csv"
     ],
+    "dataset_path": "data/USA_Housing_Dataset.csv",
+    "dataset_name": "USA_Housing_Dataset",
+    "dataset_alias": "USA Real Estate Sales",
     "conversation_history": [
       {
         "question": "Perform a thourough analsis of the data and retrieve insightful insights",
@@ -677,6 +689,62 @@
       "monthly_sales_volume",
       "price_by_condition_and_renovation",
       "monthly_avg_price"
+    ]
+  },
+  "5d19bd69-6902-4730-9fbd-dc8630ebcc96": {
+    "manifest": {
+      "data_path": "pre_processing/processed_data/cleaned_ecommerce_30a64747.json",
+      "source_file": "data/ecommerce.csv",
+      "columns": [
+        "id",
+        "description"
+      ],
+      "dtypes": {
+        "id": "int64",
+        "description": "str"
+      },
+      "row_count": 500,
+      "summary": "The e-commerce dataset has been successfully pre-processed, resulting in a cleaned and organized dataset ready for analysis.\n\nThe final dataset has the following characteristics:\n\n*   **Shape**: It contains 500 rows and 2 columns.\n*   **Columns**: The two columns are `id` and `description`.\n*   **Notable Characteristics**:\n    *   The `id` column serves as a unique identifier for each entry.\n    *   The `description` column has been cleaned to remove irrelevant characters and formatting.\n    *   Duplicate entries and rows with missing essential information have been removed to ensure data quality.",
+      "created_at": "2026-04-20T14:59:10.550994",
+      "status": "success",
+      "file_hash": "526bceedc29dac893ec2b1940b81cc75"
+    },
+    "manifests": [
+      {
+        "data_path": "pre_processing/processed_data/cleaned_ecommerce_30a64747.json",
+        "source_file": "data/ecommerce.csv",
+        "columns": [
+          "id",
+          "description"
+        ],
+        "dtypes": {
+          "id": "int64",
+          "description": "str"
+        },
+        "row_count": 500,
+        "summary": "The e-commerce dataset has been successfully pre-processed, resulting in a cleaned and organized dataset ready for analysis.\n\nThe final dataset has the following characteristics:\n\n*   **Shape**: It contains 500 rows and 2 columns.\n*   **Columns**: The two columns are `id` and `description`.\n*   **Notable Characteristics**:\n    *   The `id` column serves as a unique identifier for each entry.\n    *   The `description` column has been cleaned to remove irrelevant characters and formatting.\n    *   Duplicate entries and rows with missing essential information have been removed to ensure data quality.",
+        "created_at": "2026-04-20T14:59:10.550994",
+        "status": "success",
+        "file_hash": "526bceedc29dac893ec2b1940b81cc75"
+      }
+    ],
+    "data_path": "data/ecommerce.csv",
+    "data_paths": [
+      "data/ecommerce.csv"
+    ],
+    "dataset_path": "data/ecommerce.csv",
+    "dataset_name": "ecommerce",
+    "dataset_alias": "Cleaned E-commerce Product Data",
+    "conversation_history": [
+      {
+        "question": "Perform a thorough analysis of this dataset and highlight the most important trends, outliers, and actionable insights.",
+        "summary_snippet": "# Executive Summary\nThis analysis of product descriptions reveals a strong emphasis on material specifications and sustainability. The average description length is **1020.21 characters**, providing customers with detailed product information. A significant portion of the descriptions, **55.4 percen"
+      }
+    ],
+    "all_chart_ids": [
+      "Top 20 Most Frequent Words in Descriptions",
+      "Sentiment Distribution of Descriptions",
+      "Top 20 Most Frequent Phrases (Bigrams)"
     ]
   }
 }

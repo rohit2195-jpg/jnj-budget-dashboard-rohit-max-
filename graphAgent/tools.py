@@ -43,6 +43,25 @@ def get_graph_registry():
 def _append_chart(chart: dict):
     _graph_registry.append(chart)
 
+
+def _normalize_scatter_points(data):
+    points = []
+    for item in data or []:
+        if isinstance(item, dict):
+            x = item.get("x")
+            y = item.get("y")
+        elif isinstance(item, (list, tuple)) and len(item) >= 2:
+            x, y = item[0], item[1]
+        else:
+            continue
+
+        if isinstance(x, (int, float)):
+            x = round(x, 2)
+        if isinstance(y, (int, float)):
+            y = round(y, 2)
+        points.append({"x": x, "y": y})
+    return points
+
 @tool
 def add_line_chart(
     chart_id: str,
@@ -398,7 +417,7 @@ Best for: Growth trends, cumulative values, volume over time.
 def add_scatter_chart(
     chart_id: str,
     title: str,
-    data: List[List[float]],  # [[x, y], [x, y]]
+    data: List[dict],
     series_name: str
 ):
     """
@@ -412,13 +431,12 @@ Use this when:
 Parameters:
 - chart_id: Unique identifier
 - title: Chart title
-- data: List of [x, y] numeric pairs
+- data: List of {x, y} objects or [x, y] numeric pairs
 - series_name: Label for the dataset
 
 Best for: Correlation analysis, regression exploration, anomaly detection.
 """
-    data = [[round(x, 2) if isinstance(x, (int, float)) else x,
-             round(y, 2) if isinstance(y, (int, float)) else y] for x, y in data]
+    data = _normalize_scatter_points(data)
     _append_chart({
         "id": chart_id,
         "title": title,

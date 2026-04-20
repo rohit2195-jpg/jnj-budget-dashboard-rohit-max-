@@ -45,15 +45,47 @@ async function parseJsonResponse(response, fallbackMessage) {
 // ── localStorage helpers ──────────────────────────────────────────────────────
 const STORAGE_KEY = 'budget-dashboard-conversations';
 const THEME_KEY   = 'budget-dashboard-theme';
+const MAX_UPLOAD_BYTES = 250 * 1024 * 1024;
+const MAX_FILES_PER_ANALYSIS = 10;
+
+function normalizeConversation(conv) {
+  if (!conv || typeof conv !== 'object') return conv;
+  const datasetPath = conv.datasetPath ?? conv.data?.dataset_path ?? null;
+  const datasetName = conv.datasetName ?? conv.data?.dataset_name ?? null;
+  const datasetAlias = conv.datasetAlias ?? conv.data?.dataset_alias ?? null;
+  return { ...conv, datasetPath, datasetName, datasetAlias };
+}
 
 function loadConversations() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]').map(normalizeConversation); }
   catch { return []; }
 }
 
 function saveConversations(convs) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(convs.slice(0, 50))); }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(convs.slice(0, 50).map(normalizeConversation))); }
   catch { /* ignore quota errors */ }
+}
+
+function getConversationDatasetMeta(conv) {
+  const name = (conv?.datasetName || '').trim() || 'Dataset unknown';
+  const alias = (conv?.datasetAlias || '').trim();
+  const hasDistinctAlias = alias && alias.toLowerCase() !== name.toLowerCase();
+  return {
+    name,
+    alias: hasDistinctAlias ? alias : '',
+  };
+}
+
+function needsDatasetBackfill(conv) {
+  if (!conv?.sessionId) return false;
+  return !(conv.datasetPath && conv.datasetName);
+}
+
+function formatBytes(bytes) {
+  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1).replace(/\.0$/, '')} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(1).replace(/\.0$/, '')} KB`;
+  return `${bytes} B`;
 }
 
 function timeLabel(ts) {
@@ -229,6 +261,7 @@ function App() {
   const [datasets, setDatasets]           = useState([]);
   const [selectedDataset, setSelectedDataset] = useState('');
   const [uploading, setUploading]         = useState(false);
+  const [datasetBackfillRetryTick, setDatasetBackfillRetryTick] = useState(0);
 
   // Follow-up state
   const [sessionId, setSessionId]                   = useState(null);
@@ -239,6 +272,7 @@ function App() {
   const activeConvIdRef = useRef(null);
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
+  const attemptedDatasetBackfillsRef = useRef(new Set());
 
   useEffect(() => {
     if (!folderInputRef.current) return;
@@ -261,6 +295,7 @@ function App() {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setError(null);
     try {
       const formData = new FormData();
       formData.append('file', file);
@@ -268,6 +303,7 @@ function App() {
       const json = await parseJsonResponse(res, 'Upload failed');
       await fetchDatasets();
       setSelectedDataset(json.path);
+      setAppState(current => (current === 'error' ? 'idle' : current));
     } catch (err) {
       setError(err.message);
       setAppState('error');
@@ -282,8 +318,27 @@ function App() {
       const ext = f.name.split('.').pop()?.toLowerCase();
       return ext === 'csv' || ext === 'json';
     });
-    if (files.length === 0) return;
+    if (files.length === 0) {
+      setError('No CSV or JSON files were found in that folder.');
+      setAppState('error');
+      e.target.value = '';
+      return;
+    }
+    if (files.length > MAX_FILES_PER_ANALYSIS) {
+      setError(`That folder contains ${files.length} supported files. The current limit is ${MAX_FILES_PER_ANALYSIS}.`);
+      setAppState('error');
+      e.target.value = '';
+      return;
+    }
+    const totalBytes = files.reduce((sum, file) => sum + (file.size || 0), 0);
+    if (totalBytes > MAX_UPLOAD_BYTES) {
+      setError(`That folder is ${formatBytes(totalBytes)}. Folder uploads must stay under ${formatBytes(MAX_UPLOAD_BYTES)}.`);
+      setAppState('error');
+      e.target.value = '';
+      return;
+    }
     setUploading(true);
+    setError(null);
     try {
       const formData = new FormData();
       files.forEach(f => formData.append('files', f));
@@ -295,6 +350,7 @@ function App() {
       const json = await parseJsonResponse(res, 'Upload failed');
       await fetchDatasets();
       setSelectedDataset(json.folder_path);
+      setAppState(current => (current === 'error' ? 'idle' : current));
     } catch (err) {
       setError(err.message);
       setAppState('error');
@@ -307,18 +363,111 @@ function App() {
   useEffect(() => { saveConversations(conversations); }, [conversations]);
 
   useEffect(() => {
+    const pendingSessionIds = Array.from(new Set(
+      conversations
+        .filter(conv => needsDatasetBackfill(conv))
+        .map(conv => conv.sessionId)
+        .filter(sessionId => {
+          if (!sessionId) return false;
+          if (attemptedDatasetBackfillsRef.current.has(sessionId)) return false;
+          attemptedDatasetBackfillsRef.current.add(sessionId);
+          return true;
+        })
+    ));
+
+    if (pendingSessionIds.length === 0) return;
+
+    let cancelled = false;
+    let retryTimer = null;
+
+    const backfillDatasetMetadata = async () => {
+      const results = await Promise.all(
+        pendingSessionIds.map(async (sessionId) => {
+          try {
+            const response = await fetch(apiUrl(`/api/sessions/${encodeURIComponent(sessionId)}/dataset`));
+            if (response.status === 404) {
+              return [sessionId, 'missing'];
+            }
+            const payload = await parseJsonResponse(response, 'Unable to load saved dataset metadata');
+            return [sessionId, {
+              datasetPath: payload.dataset_path || null,
+              datasetName: payload.dataset_name || null,
+              datasetAlias: payload.dataset_alias || null,
+            }];
+          } catch {
+            return [sessionId, null];
+          }
+        })
+      );
+
+      if (cancelled) return;
+      const failedSessionIds = [];
+      const metadataBySessionId = new Map(results.filter(([, value]) => value));
+      results.forEach(([sessionId, value]) => {
+        if (value === null) {
+          attemptedDatasetBackfillsRef.current.delete(sessionId);
+          failedSessionIds.push(sessionId);
+        }
+      });
+      if (failedSessionIds.length > 0) {
+        retryTimer = window.setTimeout(() => {
+          setDatasetBackfillRetryTick(tick => tick + 1);
+        }, 5000);
+      }
+      if (metadataBySessionId.size === 0) return;
+
+      setConversations(current => {
+        let changed = false;
+        const next = current.map(conv => {
+          if (!needsDatasetBackfill(conv)) return conv;
+          const recovered = metadataBySessionId.get(conv.sessionId);
+          if (!recovered) return conv;
+          const merged = {
+            ...conv,
+            datasetPath: conv.datasetPath || recovered.datasetPath,
+            datasetName: conv.datasetName || recovered.datasetName,
+            datasetAlias: conv.datasetAlias ?? recovered.datasetAlias,
+          };
+          if (
+            merged.datasetPath !== conv.datasetPath ||
+            merged.datasetName !== conv.datasetName ||
+            merged.datasetAlias !== conv.datasetAlias
+          ) {
+            changed = true;
+            return merged;
+          }
+          return conv;
+        });
+        return changed ? next : current;
+      });
+    };
+
+    backfillDatasetMetadata();
+
+    return () => {
+      cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+    };
+  }, [conversations, datasetBackfillRetryTick]);
+
+  useEffect(() => {
     activeConvIdRef.current = activeConvId;
   }, [activeConvId]);
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem(THEME_KEY, theme);
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute('content', theme === 'dark' ? '#141414' : '#D51130');
   }, [theme]);
 
   const toggleTheme = () => setTheme(t => t === 'dark' ? 'light' : 'dark');
 
   const loading = appState === 'loading_start' || appState === 'loading_resume';
   const hasDataset = Boolean(selectedDataset);
+  const activeConversation = conversations.find(conv => conv.id === activeConvId) || null;
+  const activeDatasetMeta = activeConversation ? getConversationDatasetMeta(activeConversation) : null;
 
   // ── sidebar actions ────────────────────────────────────────────────────────
   const handleNewChat = () => {
@@ -373,6 +522,7 @@ function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           question,
+          dataset_path: selectedDataset || undefined,
           // If selected dataset is a folder (ends with /), find its files from datasets list
           ...(selectedDataset?.endsWith('/')
             ? { filepaths: datasets.find(d => d.path === selectedDataset)?.files || [] }
@@ -436,6 +586,9 @@ function App() {
     const conv = {
       id: Date.now().toString(), question, timestamp: Date.now(),
       data: snapshot, sections, sessionId: snapshot.session_id || null,
+      datasetPath: snapshot.dataset_path || null,
+      datasetName: snapshot.dataset_name || null,
+      datasetAlias: snapshot.dataset_alias || null,
     };
     setConversations(prev => [conv, ...prev]);
     setFollowupDrafts(prev => ({ ...prev, [conv.id]: '' }));
@@ -535,7 +688,11 @@ function App() {
             id="dataset-select"
             aria-label="Select dataset"
             value={selectedDataset}
-            onChange={(e) => setSelectedDataset(e.target.value)}
+            onChange={(e) => {
+              setSelectedDataset(e.target.value);
+              setError(null);
+              setAppState(current => (current === 'error' ? 'idle' : current));
+            }}
             disabled={loading || appState === 'pending_approval'}
           >
             {datasets.length === 0 && <option value="">No datasets found</option>}
@@ -587,6 +744,7 @@ function App() {
             type="file"
             ref={folderInputRef}
             accept=".csv,.json"
+            multiple
             onChange={handleFolderUpload}
             hidden
             disabled={uploading}
@@ -619,18 +777,30 @@ function App() {
           <div className="sidebar-list">
             {conversations.length === 0
               ? <p className="sidebar-empty">No analyses yet</p>
-              : conversations.map(conv => (
+              : conversations.map(conv => {
+                  const datasetMeta = getConversationDatasetMeta(conv);
+                  const datasetTitle = datasetMeta.alias
+                    ? `${datasetMeta.name} (${datasetMeta.alias})`
+                    : datasetMeta.name;
+                  return (
                   <div key={conv.id} className={`sidebar-item${activeConvId === conv.id ? ' active' : ''}`}>
                     <button
                       type="button"
                       className="sidebar-load"
                       onClick={() => handleLoadConversation(conv)}
                       aria-current={activeConvId === conv.id ? 'page' : undefined}
+                      title={`${conv.question}\n${datasetTitle}`}
                     >
                       <MessageSquare size={13} className="sidebar-item-icon" aria-hidden="true" />
                       <div className="sidebar-item-text">
                         <span className="sidebar-item-q">{conv.question}</span>
-                        <span className="sidebar-item-time">{timeLabel(conv.timestamp)}</span>
+                        <span className="sidebar-item-dataset">{datasetMeta.name}</span>
+                        <div className="sidebar-item-meta">
+                          <span className="sidebar-item-time">{timeLabel(conv.timestamp)}</span>
+                          {datasetMeta.alias && (
+                            <span className="sidebar-item-alias">{datasetMeta.alias}</span>
+                          )}
+                        </div>
                       </div>
                     </button>
                     <button
@@ -643,7 +813,7 @@ function App() {
                       <Trash2 size={13} />
                     </button>
                   </div>
-                ))
+                )})
             }
           </div>
         </aside>
@@ -695,6 +865,22 @@ function App() {
           {/* Dashboard — renders all sections (initial + follow-ups) */}
           {appState === 'complete' && dashboardSections.length > 0 && (
             <div key={activeConvId || 'live-dashboard'} className="dashboard-additive">
+              {activeConversation && (
+                <section className="dataset-context-card" aria-label="Dataset used for this analysis">
+                  <div className="dataset-context-eyebrow">Dataset used</div>
+                  <div className="dataset-context-title" title={activeDatasetMeta.name}>
+                    {activeDatasetMeta.name}
+                  </div>
+                  {activeDatasetMeta.alias && (
+                    <div
+                      className="dataset-context-alias"
+                      title={activeDatasetMeta.alias}
+                    >
+                      {activeDatasetMeta.alias}
+                    </div>
+                  )}
+                </section>
+              )}
               {dashboardSections.map((section, sIdx) => {
                 const sectionKey = `${activeConvId || 'live'}-section-${sIdx}`;
 

@@ -21,6 +21,7 @@ Pandas or NumPy values leaked into checkpointed or persisted state.
 - Make sure you are running the current backend code
 - Restart the backend fully after pulling changes
 - Confirm the backend is using the direct post-approval runner instead of continuing the old checkpoint-heavy resume path
+- If the error persists, inspect whether a new code path is storing raw pandas or NumPy values outside the normalization helpers
 
 ### Where To Inspect
 
@@ -100,6 +101,7 @@ Examples already seen:
 - retry with a more specific prompt
 - inspect backend logs for the generated code block and the execution error
 - confirm you are running the latest analyzer/runtime fixes
+- prefer prompts that ask for trends, comparisons, segments, anomalies, and key drivers instead of domain-specific assumptions that may not match the dataset
 
 ### Where To Inspect
 
@@ -124,6 +126,7 @@ The app runs, but the returned charts or summary are generic, repetitive, or not
 - use a more concrete question naming the metric and grouping you want
 - verify the uploaded dataset is the intended one
 - clear or inspect processed cache outputs under `pre_processing/processed_data/`
+- confirm the dataset-agnostic prompt suggestions in the UI still match the actual product behavior
 
 ### Where To Inspect
 
@@ -148,6 +151,7 @@ Initial analysis works, but follow-up questions fail or lose context.
 - confirm the backend wrote `reports/followup_sessions.json`
 - keep the same backend instance running for the session or verify persisted session state after restart
 - rerun the initial analysis if session state is invalid
+- if the error says `No pending approval found for this thread_id`, the backend was restarted after plan generation; rerun `/api/analyze/start` and approve the new plan without restarting
 
 ### Where To Inspect
 
@@ -172,13 +176,35 @@ Upload succeeds or seems to succeed, but the dataset is not available for select
 - inspect the backend response from `/api/upload` or `/api/upload-folder`
 - verify the new file exists under `data/`
 
+## 8. Older Chats Show `Dataset unknown`
+
+### Symptom
+
+An older saved chat still opens, but the dataset label shows `Dataset unknown`.
+
+### Likely Cause
+
+- the saved browser conversation has no dataset metadata and no usable `sessionId`
+- `reports/followup_sessions.json` is missing, stale, or from an older backend run
+- the backend does not expose the current `/api/sessions/<session_id>/dataset` route
+
+### Fix
+
+- confirm the chat still has a valid `sessionId` in localStorage
+- confirm the backend wrote and retained `reports/followup_sessions.json`
+- confirm the backend is running current code and the session dataset lookup route responds
+- rerun the analysis if the original session is no longer recoverable
+
 ### Where To Inspect
 
+- browser localStorage conversation payload
+- `reports/followup_sessions.json`
+- backend response for `GET /api/sessions/<session_id>/dataset`
 - `backend.py`
 - `data/`
 - browser network responses
 
-## 8. Generated Reports or Cache Files Show Up in Git
+## 9. Generated Reports or Cache Files Show Up in Git
 
 ### Symptom
 
@@ -199,3 +225,13 @@ These are runtime-generated files and may change during normal use.
 - `pre_processing/processed_data/*`
 - `reports/analysis_report.md`
 - `reports/followup_sessions.json`
+
+## Quick Triage Order
+
+When something breaks, inspect in this order:
+
+1. browser network response for the failing `/api/*` request
+2. backend server logs around the same timestamp
+3. generated analysis code and execution output in the logs
+4. processed dataset and manifest under `pre_processing/processed_data/`
+5. persisted follow-up state in `reports/followup_sessions.json`

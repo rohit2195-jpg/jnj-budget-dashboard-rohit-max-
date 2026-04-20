@@ -42,6 +42,8 @@ GEMINI_API_KEY=...
 MODEL_ID=gemini-2.5-pro
 ```
 
+`MODEL_ID` is documented for future configurability, but the checked-in app is currently pinned in code to Gemini 2.5 Pro.
+
 ### Optional Backend Runtime Settings
 
 ```bash
@@ -102,6 +104,16 @@ For deployment:
 - keep `FLASK_DEBUG` disabled
 - set an explicit `CORS_ORIGINS` allowlist if using split-origin hosting
 
+## Production Notes
+
+This repository is deployable, but it is not a turnkey hardened production platform. Before publishing it beyond controlled use, decide:
+
+- where uploaded datasets should be stored
+- whether processed caches should survive restarts
+- how `reports/followup_sessions.json` should be handled in multi-instance deployments
+- what limits you want on upload size, execution time, and concurrency
+- what trust boundary applies to LLM-generated analysis code in your environment
+
 ## Deployment Checklist
 
 Before calling the deployment ready:
@@ -119,6 +131,7 @@ Before calling the deployment ready:
    - plan approval
    - analysis resume
    - follow-up analysis
+7. Do not restart the backend between `/api/analyze/start` and `/api/analyze/resume` during a live demo unless you replace the in-memory approval checkpointing
 
 ## Files and State to Expect at Runtime
 
@@ -126,4 +139,15 @@ Before calling the deployment ready:
 - `reports/analysis_report.md` is rewritten during report generation
 - `reports/followup_sessions.json` persists local follow-up session state across backend restarts
 
+That session file now also affects deterministic dataset recovery for older saved chats, not just follow-up analysis behavior.
+
 If your deployment environment uses ephemeral disk, document how you want these runtime artifacts handled before relying on session persistence.
+
+## Pre-Publish Checks
+
+Before a public demo or publish step, confirm:
+
+1. the root `README.md` reflects the current runtime behavior
+2. the frontend build is clean on the pinned Node version
+3. backend logs are free of resume-time serialization errors
+4. a first-run analysis and a follow-up analysis both succeed on a fresh backend restart

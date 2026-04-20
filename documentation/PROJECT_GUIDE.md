@@ -20,8 +20,9 @@ Users submit a question about a dataset. The system preprocesses the data, gener
 source .venv/bin/activate
 .venv/bin/pip install -r requirements.txt
 .venv/bin/python backend.py
-.venv/bin/python main.py
 ```
+
+`main.py` is a legacy/manual script with hard-coded inputs. Use `backend.py` for the actual app flow.
 
 ### Frontend
 ```bash
@@ -137,9 +138,12 @@ Supported chart types:
 - `POST /api/analyze/resume`
   - Resumes after approval
   - Uses the paused plan state, then runs post-approval work directly in backend Python
-  - Returns `status`, `summary`, `graphs`, and `forecast_output`
+  - Returns `status`, `summary`, `graphs`, `forecast_output`, and dataset metadata for the saved chat
+- `GET /api/sessions/<session_id>/dataset`
+  - Resolves dataset metadata for a persisted follow-up session
+  - Supports deterministic dataset recovery for older saved chats in the frontend
 
-Pipeline state across the approval pause is persisted with LangGraph `MemorySaver`, keyed by `thread_id`. Follow-up session state is persisted separately in `reports/followup_sessions.json`.
+Pipeline state across the approval pause is persisted with LangGraph `MemorySaver`, keyed by `thread_id`. Follow-up session state is persisted separately in `reports/followup_sessions.json`, which also enables dataset recovery for previously saved chats when `sessionId` is still available.
 
 ### Frontend
 
@@ -153,6 +157,7 @@ The frontend:
 - renders charts with ApexCharts
 - renders a Future Outlook section for forecasts
 - stores conversation history in `localStorage`
+- stores dataset identity alongside saved conversations when available
 - uses `/api/*` calls relative to the current origin unless `VITE_API_BASE_URL` is set
 
 ## Code Execution Pattern
