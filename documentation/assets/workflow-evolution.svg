@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="660" viewBox="0 0 1280 660" role="img" aria-labelledby="title desc">
+  <title id="title">Workflow Evolution</title>
+  <desc id="desc">Diagram comparing the project's workflow evolution from a linear script to LangChain agents to LangGraph orchestration with direct backend execution.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f7fafc"/>
+      <stop offset="100%" stop-color="#eef3f9"/>
+    </linearGradient>
+    <style>
+      .title { font: 700 34px Arial, sans-serif; fill: #12304a; }
+      .subtitle { font: 400 18px Arial, sans-serif; fill: #4d657d; }
+      .panelTitle { font: 700 22px Arial, sans-serif; fill: #12304a; }
+      .boxTitle { font: 700 17px Arial, sans-serif; fill: #18344f; }
+      .text { font: 400 14px Arial, sans-serif; fill: #496279; }
+      .panel { fill: #ffffff; stroke: #cbd5e1; stroke-width: 1.5; rx: 20; }
+      .box { fill: #f8fafc; stroke: #d7dee8; stroke-width: 1.5; rx: 16; }
+      .accent { stroke: #d51130; stroke-width: 3; fill: none; stroke-linecap: round; }
+      .muted { stroke: #5b7088; stroke-width: 3; fill: none; stroke-linecap: round; }
+    </style>
+    <marker id="arrow-red" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#d51130"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M0,0 L12,6 L0,12 Z" fill="#5b7088"/>
+    </marker>
+  </defs>
+
+  <rect width="1280" height="660" fill="url(#bg)"/>
+  <text x="70" y="72" class="title">Workflow Evolution</text>
+  <text x="70" y="106" class="subtitle">The project added layers over time instead of discarding the previous one.</text>
+
+  <rect x="60" y="150" width="350" height="430" class="panel"/>
+  <text x="90" y="195" class="panelTitle">Phase A: Linear Script</text>
+  <rect x="90" y="225" width="290" height="70" class="box"/>
+  <text x="115" y="257" class="boxTitle">`main.py` drives everything</text>
+  <text x="115" y="280" class="text">Hard-coded inputs, direct sequencing</text>
+  <rect x="90" y="320" width="290" height="70" class="box"/>
+  <text x="115" y="352" class="boxTitle">Preprocess -> analyze -> summarize</text>
+  <text x="115" y="375" class="text">Little workflow state, mostly local execution</text>
+  <rect x="90" y="415" width="290" height="70" class="box"/>
+  <text x="115" y="447" class="boxTitle">Outputs become files</text>
+  <text x="115" y="470" class="text">First durable artifact boundary</text>
+  <path d="M235 295 V320" class="accent" marker-end="url(#arrow-red)"/>
+  <path d="M235 390 V415" class="accent" marker-end="url(#arrow-red)"/>
+
+  <rect x="465" y="150" width="350" height="430" class="panel"/>
+  <text x="495" y="195" class="panelTitle">Phase B: LangChain Agents</text>
+  <rect x="495" y="225" width="290" height="70" class="box"/>
+  <text x="520" y="257" class="boxTitle">Analysis agent</text>
+  <text x="520" y="280" class="text">Generate and execute Python analysis code</text>
+  <rect x="495" y="320" width="290" height="70" class="box"/>
+  <text x="520" y="352" class="boxTitle">Preprocessing agent</text>
+  <text x="520" y="375" class="text">Produce cleaned data and schema manifests</text>
+  <rect x="495" y="415" width="290" height="70" class="box"/>
+  <text x="520" y="447" class="boxTitle">Graph and summary agents</text>
+  <text x="520" y="470" class="text">Structured outputs feed the dashboard</text>
+  <path d="M640 295 V320" class="accent" marker-end="url(#arrow-red)"/>
+  <path d="M640 390 V415" class="accent" marker-end="url(#arrow-red)"/>
+
+  <rect x="870" y="150" width="350" height="430" class="panel"/>
+  <text x="900" y="195" class="panelTitle">Phase C: LangGraph + Backend Split</text>
+  <rect x="900" y="225" width="290" height="70" class="box"/>
+  <text x="925" y="257" class="boxTitle">LangGraph orchestrates</text>
+  <text x="925" y="280" class="text">Preprocess -> plan -> human review</text>
+  <rect x="900" y="320" width="290" height="70" class="box"/>
+  <text x="925" y="352" class="boxTitle">Backend resumes directly</text>
+  <text x="925" y="375" class="text">Analyze, forecast, graph, summarize</text>
+  <rect x="900" y="415" width="290" height="70" class="box"/>
+  <text x="925" y="447" class="boxTitle">Session-aware workflows</text>
+  <text x="925" y="470" class="text">Follow-ups, multi-file inputs, persistence</text>
+  <path d="M1045 295 V320" class="muted" marker-end="url(#arrow-blue)"/>
+  <path d="M1045 390 V415" class="muted" marker-end="url(#arrow-blue)"/>
+
+  <path d="M410 365 H465" class="accent" marker-end="url(#arrow-red)"/>
+  <path d="M815 365 H870" class="muted" marker-end="url(#arrow-blue)"/>
+
+  <text x="70" y="620" class="text">Key point: LangGraph did not replace the agents. It became the workflow controller around them.</text>
+</svg>

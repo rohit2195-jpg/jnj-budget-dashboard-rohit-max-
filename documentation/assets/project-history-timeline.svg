@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="760" viewBox="0 0 1280 760" role="img" aria-labelledby="title desc">
+  <title id="title">Project History Timeline</title>
+  <desc id="desc">Timeline diagram showing the six major phases in the project history from foundation through optimization and hardening.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fff8f8"/>
+      <stop offset="100%" stop-color="#f4f6fb"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#fafbff"/>
+    </linearGradient>
+    <style>
+      .title { font: 700 34px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 400 18px Arial, sans-serif; fill: #4b5563; }
+      .phase { font: 700 18px Arial, sans-serif; fill: #111827; }
+      .date { font: 700 14px Arial, sans-serif; fill: #b42318; }
+      .text { font: 400 14px Arial, sans-serif; fill: #4b5563; }
+      .small { font: 400 13px Arial, sans-serif; fill: #6b7280; }
+      .card { fill: url(#card); stroke: #d1d5db; stroke-width: 1.5; rx: 18; }
+      .line { stroke: #d51130; stroke-width: 4; fill: none; stroke-linecap: round; }
+      .dot { fill: #d51130; }
+    </style>
+  </defs>
+
+  <rect width="1280" height="760" fill="url(#bg)"/>
+  <text x="70" y="72" class="title">Project History Timeline</text>
+  <text x="70" y="106" class="subtitle">The repo evolved in six phases rather than one continuous line of incremental changes.</text>
+
+  <path d="M120 380 H1160" class="line"/>
+
+  <circle cx="170" cy="380" r="12" class="dot"/>
+  <rect x="85" y="150" width="170" height="160" class="card"/>
+  <text x="105" y="185" class="phase">1. Foundation</text>
+  <text x="105" y="210" class="date">Feb 6 to Feb 7</text>
+  <text x="105" y="240" class="text">Repo setup</text>
+  <text x="105" y="262" class="text">Datasets added</text>
+  <text x="105" y="284" class="text">First prototype</text>
+  <text x="105" y="435" class="small">`c312244`, `7cb9764`</text>
+
+  <circle cx="340" cy="380" r="12" class="dot"/>
+  <rect x="255" y="430" width="170" height="160" class="card"/>
+  <text x="275" y="465" class="phase">2. Linear Flow</text>
+  <text x="275" y="490" class="date">Feb 7 to Feb 13</text>
+  <text x="275" y="520" class="text">Single script</text>
+  <text x="275" y="542" class="text">Sequential stages</text>
+  <text x="275" y="564" class="text">File output added</text>
+  <text x="275" y="615" class="small">`bf43a81`</text>
+
+  <circle cx="510" cy="380" r="12" class="dot"/>
+  <rect x="425" y="150" width="170" height="180" class="card"/>
+  <text x="445" y="185" class="phase">3. Agentic Layer</text>
+  <text x="445" y="210" class="date">Feb 9 to Mar 1</text>
+  <text x="445" y="240" class="text">LangChain agents</text>
+  <text x="445" y="262" class="text">Preprocessing</text>
+  <text x="445" y="284" class="text">Manifests + cache</text>
+  <text x="445" y="306" class="text">Prompt hardening</text>
+  <text x="445" y="455" class="small">`18ea491`, `5c8cf9a`, `221a44a`</text>
+
+  <circle cx="680" cy="380" r="12" class="dot"/>
+  <rect x="595" y="430" width="170" height="180" class="card"/>
+  <text x="615" y="465" class="phase">4. Visualization</text>
+  <text x="615" y="490" class="date">Feb 20 to Mar 30</text>
+  <text x="615" y="520" class="text">Graph agent</text>
+  <text x="615" y="542" class="text">Frontend UI</text>
+  <text x="615" y="564" class="text">Checklist step</text>
+  <text x="615" y="586" class="text">Early LangGraph</text>
+  <text x="615" y="635" class="small">`f034e35`, `b2f2f13`</text>
+
+  <circle cx="850" cy="380" r="12" class="dot"/>
+  <rect x="765" y="150" width="170" height="180" class="card"/>
+  <text x="785" y="185" class="phase">5. Orchestration</text>
+  <text x="785" y="210" class="date">Apr 1 to Apr 8</text>
+  <text x="785" y="240" class="text">Follow-ups</text>
+  <text x="785" y="262" class="text">Additive dashboard</text>
+  <text x="785" y="284" class="text">Multi-file flow</text>
+  <text x="785" y="306" class="text">Upload workflow</text>
+  <text x="785" y="455" class="small">`ffee730`, `2f377af`</text>
+
+  <circle cx="1020" cy="380" r="12" class="dot"/>
+  <rect x="935" y="430" width="210" height="180" class="card"/>
+  <text x="955" y="465" class="phase">6. Optimization + Hardening</text>
+  <text x="955" y="490" class="date">Apr 17 to Apr 20</text>
+  <text x="955" y="520" class="text">Split hardened</text>
+  <text x="955" y="542" class="text">Direct backend resume</text>
+  <text x="955" y="564" class="text">Repo cleanup</text>
+  <text x="955" y="586" class="text">Architecture docs</text>
+  <text x="955" y="635" class="small">`946bd16`, `120eee0`, `094f303`</text>
+
+  <text x="70" y="705" class="small">The later phases preserve earlier work: the linear analysis path survived inside the LangChain and LangGraph-era architecture.</text>
+</svg>
